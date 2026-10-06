@@ -1,27 +1,10 @@
 import { CONFIG } from './config.js';
-import { sunDirection } from '../utils/math.js';
 
-// Aim once when constructing the scene; sun controls do not move the mirrors.
-export function initialMirrorPose(x, z) {
-  const directionToSun = sunDirection(CONFIG.sunAzimuth, CONFIG.sunAltitude);
-  const directionToReceiver = [
-    -x,
-    CONFIG.receiverCenter[1] -
-      CONFIG.azimuthAxisHeight -
-      CONFIG.elevationAxisOffset,
-    -z,
-  ];
-  const receiverDistance = Math.hypot(...directionToReceiver);
-  const mirrorNormal = directionToReceiver.map(
-    (component, axis) => component / receiverDistance + directionToSun[axis],
-  );
-
+// Mirror normals start straight up; sun controls do not move the mirrors.
+export function initialMirrorPose() {
   return {
-    azimuth: Math.atan2(mirrorNormal[0], mirrorNormal[2]),
-    altitude: Math.atan2(
-      mirrorNormal[1],
-      Math.hypot(mirrorNormal[0], mirrorNormal[2]),
-    ),
+    azimuth: 0,
+    altitude: Math.PI / 2,
   };
 }
 

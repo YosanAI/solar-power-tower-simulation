@@ -25,7 +25,7 @@ The range includes up to **30 minutes before sunrise and after sunset**, rounded
 
 Moving the time slider updates the angle sliders, lighting, shadows and reflections. The manual angle sliders remain available at 0.1° increments; adjusting either angle (including through the scene API) marks the time readout as **Manual** until the time slider is moved again. The reference date, latitude, longitude, margin and initial time live in `CONFIG.solarDay` and `CONFIG.sunTimeMinutes`. Reference days without sunrise or sunset are rejected with a clear error.
 
-The sun sliders update lighting and reflections without moving the mirrors. Rig access remains available for integration:
+Every heliostat starts with **azimuth 0 and altitude π/2 radians**, pointing its mirror normal straight up. The sun sliders update lighting and reflections without moving the mirrors. Rig access remains available for integration:
 
 ```js
 const heliostat = window.solarScene.getHeliostat('H-0001');

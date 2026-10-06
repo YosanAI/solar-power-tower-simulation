@@ -322,7 +322,7 @@ export class HeliostatRig {
     this.azimuthPivot.add(this.altitudePivot);
 
     this.onChange = onChange;
-    this.initialPose = initialMirrorPose(data.x, data.z);
+    this.initialPose = initialMirrorPose();
     this.azimuth = this.initialPose.azimuth;
     this.altitude = this.initialPose.altitude;
     this.root.userData = {
