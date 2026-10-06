@@ -6,6 +6,16 @@ html, body {
 }
 #viewport, canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 canvas { outline: none; }
+#creator-credit {
+  position: fixed; z-index: 3;
+  left: max(20px, env(safe-area-inset-left));
+  bottom: calc(4px + env(safe-area-inset-bottom));
+  color: #dbe8e4; font-size: 10px; line-height: 12px;
+  text-shadow: 0 1px 3px #000;
+}
+#creator-credit a { color: inherit; text-decoration: none; }
+#creator-credit a:hover, #creator-credit a:focus-visible { text-decoration: underline; }
+#script-panel { bottom: max(var(--panel-inset), calc(20px + env(safe-area-inset-bottom))); }
 #yield-hud {
   position: fixed; z-index: 2;
   top: max(16px, env(safe-area-inset-top));
@@ -51,6 +61,7 @@ canvas { outline: none; }
 }
 #loading[hidden] { display: none; }
 @media (max-width: 600px) {
+  #creator-credit { left: max(12px, env(safe-area-inset-left)); }
   #yield-hud { top: max(10px, env(safe-area-inset-top)); left: max(10px, env(safe-area-inset-left)); padding: 11px 15px; }
   #yield-energy { font-size: 30px; }
   #scene-controls {
