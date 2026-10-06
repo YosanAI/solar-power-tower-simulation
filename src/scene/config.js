@@ -12,6 +12,9 @@ export const CONFIG = Object.freeze({
   receiverCenter: [0, 139.3, 0],
   receiverRadius: 6.38,
   receiverHeight: 18.1,
+  receiverGlow: Object.freeze({
+    fullPowerWatts: 20e6, // Visual brightness scale, near the field's tracked midday power.
+  }),
   yield: Object.freeze({
     mirrorReflectivity: 0.923, // Solar-weighted reflectance of 4 mm mirror glass.
     cleanliness: 0.97,

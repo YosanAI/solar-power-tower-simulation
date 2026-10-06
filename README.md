@@ -47,6 +47,8 @@ The model uses [Ineichen/Perez clear-sky DNI](https://pvlib-python.readthedocs.i
 
 In the configuration panel, **Debug → Show rays** is off by default. Enable it for yellow incidence segments, red reflected segments and cyan mirror normals. Each reflected segment has exactly the mirror-center-to-receiver-center length, including misses. Diagnostics update on sun and mirror changes, use three batched draws, and stay out of reflection probes and shadows.
 
+The black receiver absorber glows as instantaneous absorbed power rises, changing from a faint warm sheen to a bright warm-white surface with a soft corona. The halo follows the receiver's projected shape as the camera moves, shimmers subtly during simulation or camera movement, and extinguishes at zero input. A stationary scene stays idle. Brightness is a visual indication of received power, with a 20 MW reference in `CONFIG.receiverGlow.fullPowerWatts`; it does not change the yield model or calculate receiver temperature. The bright surface appears in mirror reflections; the camera-facing halo stays out of reflection probes and shadows.
+
 Console APIs include `solarScene.getYieldState()`, `getShowRays()` and `setShowRays(true)`. `getYieldState()` provides raw `energyWh`/`powerWatts`, display `energyMWh`/`powerMW`, capture fraction, contributing mirrors and DNI. Optical calculations use the reflecting face's world position (`getMirrorCenter()`), including its offset from the controller's rotation-pivot position.
 
 ## Embedded mirror controller
