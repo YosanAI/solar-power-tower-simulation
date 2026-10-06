@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#176cbd" />
+    <title>Solar Power Tower — Scene</title>
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <main id="viewport" aria-label="Solar power tower scene"></main>
+    <div id="sun-controls" aria-label="Sun position">
+      <label for="sun-azimuth"
+        ><span>Sun azimuth</span><output id="azimuth-value">−58°</output></label
+      >
+      <input
+        id="sun-azimuth"
+        type="range"
+        min="-180"
+        max="180"
+        step="1"
+        value="-58"
+      />
+      <label for="sun-altitude"
+        ><span>Sun altitude</span
+        ><output id="altitude-value">48°</output></label
+      >
+      <input
+        id="sun-altitude"
+        type="range"
+        min="-10"
+        max="89"
+        step="1"
+        value="48"
+      />
+    </div>
+    <div id="loading" role="status">Loading scene…</div>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
