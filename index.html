@@ -13,28 +13,42 @@
   <body>
     <main id="viewport" aria-label="Solar power tower scene"></main>
     <div id="sun-controls" aria-label="Sun position">
+      <label for="sun-time"
+        ><span>Time of day</span><output id="time-value" for="sun-time">10:00</output></label
+      >
+      <input
+        id="sun-time"
+        type="range"
+        min="327"
+        max="1114"
+        step="1"
+        value="600"
+        aria-describedby="sun-daylight sun-day-context"
+      />
+      <div id="sun-daylight" class="sun-time-note"></div>
+      <div id="sun-day-context" class="sun-time-note"></div>
       <label for="sun-azimuth"
-        ><span>Sun azimuth</span><output id="azimuth-value">−58°</output></label
+        ><span>Sun azimuth</span><output id="azimuth-value" for="sun-azimuth">−45.1°</output></label
       >
       <input
         id="sun-azimuth"
         type="range"
         min="-180"
         max="180"
-        step="1"
-        value="-58"
+        step="0.1"
+        value="-45.1"
       />
       <label for="sun-altitude"
         ><span>Sun altitude</span
-        ><output id="altitude-value">48°</output></label
+        ><output id="altitude-value" for="sun-altitude">45.1°</output></label
       >
       <input
         id="sun-altitude"
         type="range"
         min="-10"
         max="89"
-        step="1"
-        value="48"
+        step="0.1"
+        value="45.1"
       />
     </div>
     <div id="loading" role="status">Loading scene…</div>

@@ -26,7 +26,7 @@ canvas {
   position: fixed;
   right: max(16px, env(safe-area-inset-right));
   bottom: max(16px, env(safe-area-inset-bottom));
-  width: 228px;
+  width: 258px;
   padding: 12px 15px 10px;
   border: 1px solid #ffffff30;
   border-radius: 7px;
@@ -55,6 +55,14 @@ input[type='range'] {
 input[type='range']:last-child {
   margin-bottom: 0;
 }
+.sun-time-note {
+  font-size: 10px;
+  color: #b6c7d7;
+  font-variant-numeric: tabular-nums;
+}
+#sun-day-context {
+  margin: 2px 0 12px;
+}
 #loading {
   position: fixed;
   left: 50%;
@@ -72,7 +80,7 @@ input[type='range']:last-child {
 }
 @media (max-width: 600px) {
   #sun-controls {
-    width: 200px;
+    width: 240px;
     right: 10px;
     bottom: 10px;
     padding: 9px 12px;

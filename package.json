@@ -10,10 +10,12 @@
   "scripts": {
     "dev": "vite",
     "start": "vite",
+    "test": "node --test",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "suncalc": "2.1.1",
     "three": "0.180.0"
   },
   "devDependencies": {

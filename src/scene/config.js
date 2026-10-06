@@ -12,8 +12,13 @@ export const CONFIG = Object.freeze({
   receiverCenter: [0, 139.3, 0],
   fieldInnerRadius: 56,
   fieldOuterRadius: 337,
-  sunAzimuth: -58,
-  sunAltitude: 48,
+  sunTimeMinutes: 10 * 60,
+  solarDay: Object.freeze({
+    date: '2026-03-20', // Fixed reference day for the desert scene.
+    latitude: 35,
+    longitude: 0,
+    marginMinutes: 30,
+  }),
   detailedMirrors: 16,
   reflectionSectors: 4,
 });

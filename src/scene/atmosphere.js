@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { clamp, degrees, smoothstep, sunDirection } from '../utils/math.js';
+import { getSolarDay, getSunPosition } from '../utils/solarTime.js';
 
 /** Shared sky dome for the visible scene and its reflection environments. */
 function createClearSky() {
@@ -94,7 +95,8 @@ export class Atmosphere {
     this.environmentScene.add(this.environmentGround);
 
     this.sunDirection = new THREE.Vector3();
-    this.setDegrees(CONFIG.sunAzimuth, CONFIG.sunAltitude);
+    const initialSun = getSunPosition(CONFIG.sunTimeMinutes, getSolarDay(CONFIG.solarDay));
+    this.setDegrees(initialSun.azimuth, initialSun.altitude);
   }
 
   /** Set the sun's azimuth and altitude in degrees. */
