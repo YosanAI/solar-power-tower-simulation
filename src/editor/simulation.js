@@ -2,20 +2,10 @@ import { SANDBOX_LIMITS, validateConsoleEntries, serializeSandboxError } from '.
 
 export const DAY_DURATION_SECONDS = 12;
 
-export const DEFAULT_CODE = `function updateMirrors(
-  mirrorList /* Array<Mirror> */,
-  sunData /* { azimuth: number, elevation: number } */,
-  receiverTargetPos /* { x: number, y: number, z: number } */
-) {
-  // Mirror: { id: string, pos: { x, y, z }, azimuth, elevation }.
-  // mirror.pos is the mirror position; x, y and z are numbers in scene units.
-  // receiverTargetPos is the fixed tower receiver position to aim at.
-  // All angles are radians. Elevation is clamped to 0–Math.PI / 2.
-  // APIs: setAzimuth(angle), setElevation(angle), setPose({ azimuth, elevation }).
-  // setPose accepts either angle. reset() restores 0 azimuth, Math.PI / 2 elevation.
-  // getCurrentAzimuth() and getCurrentElevation() read the current angles.
-  // sunData also has timeMinutes (solar clock), elapsedTime and deltaTime (seconds).
-  // Uncomment this example to update every mirror on each sun update.
+export const DEFAULT_CODE = `function updateMirrors(mirrorList /* Mirror[] */, sunData /* {azimuth, elevation} */, receiverTargetPos /* {x, y, z} */) {
+  // Angles are radians. mirror.pos is {x, y, z}.
+  // receiverTargetPos is the tower receiver position.
+  // Uncomment to try the example.
   /*
   for (const mirror of mirrorList) {
     const azimuth = mirror.getCurrentAzimuth() + 0.03;

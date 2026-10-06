@@ -120,8 +120,8 @@ function createHarness(t, { realWorker = false, mirrorCount = 2, ...overrides } 
 
 test('the documented JavaScript starter compiles and its example increments azimuth with sine elevation', async (t) => {
   const h = createHarness(t, { realWorker: true });
-  assert.match(DEFAULT_CODE, /mirrorList \/\* Array<Mirror> \*\//);
-  assert.match(DEFAULT_CODE, /receiverTargetPos \/\* \{ x: number, y: number, z: number \} \*\//);
+  assert.match(DEFAULT_CODE, /mirrorList \/\* Mirror\[\] \*\//);
+  assert.match(DEFAULT_CODE, /receiverTargetPos \/\* \{x, y, z\} \*\//);
   assert.doesNotMatch(DEFAULT_CODE, /altitude|round|rotation.axis/i);
   assert.equal(await h.run(DEFAULT_CODE), true);
   await h.step(0);

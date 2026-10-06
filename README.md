@@ -40,15 +40,10 @@ Rig angles are radians; +Y is up and azimuth zero points toward +Z. Mirror refle
 The lower-left JavaScript editor includes parameter hints written as JavaScript comments and a commented example:
 
 ```js
-function updateMirrors(
-  mirrorList /* Array<Mirror> */,
-  sunData /* { azimuth: number, elevation: number } */,
-  receiverTargetPos /* { x: number, y: number, z: number } */
-) {
-  // Mirror: { id: string, pos: { x, y, z }, azimuth, elevation }.
-  // mirror.pos is the mirror position. All angles are radians.
-  // receiverTargetPos is the fixed tower receiver position to aim at.
-  // Uncomment the example:
+function updateMirrors(mirrorList /* Mirror[] */, sunData /* {azimuth, elevation} */, receiverTargetPos /* {x, y, z} */) {
+  // Angles are radians. mirror.pos is {x, y, z}.
+  // receiverTargetPos is the tower receiver position.
+  // Uncomment to try the example.
   /*
   for (const mirror of mirrorList) {
     const azimuth = mirror.getCurrentAzimuth() + 0.03;
