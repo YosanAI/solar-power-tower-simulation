@@ -8,8 +8,13 @@ export const DEFAULT_CODE = `function updateMirrors(mirrorList /* Mirror[] */, s
   // Uncomment to try the example.
   /*
   for (const mirror of mirrorList) {
+
+    //keep rotating forever
     const azimuth = mirror.getCurrentAzimuth() + 0.03;
+    const elevation = mirror.getCurrentElevation();
+    
     mirror.setAzimuth(azimuth);
+    //Move the mirror up and down periodically
     mirror.setElevation(Math.sin(azimuth));
   }
   */
