@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Parts } from '../utils/geometry.js';
-import { clamp } from '../utils/math.js';
+import { normalizeMirrorPose, validateMirrorCommands } from '../app/mirrorCommands.js';
 import { CONFIG } from './config.js';
 import { initialMirrorPose } from './layout.js';
 
@@ -348,12 +348,10 @@ export class HeliostatRig {
     return this.setAltitude(radians);
   }
 
-  setPose({ azimuth = this.azimuth, altitude = this.altitude } = {}) {
-    if (!Number.isFinite(azimuth) || !Number.isFinite(altitude)) {
-      throw new TypeError('Rig angles must be finite radians.');
-    }
+  setPose(pose = {}) {
+    const { azimuth, altitude } = normalizeMirrorPose(this, pose);
     this.azimuth = azimuth;
-    this.altitude = clamp(altitude, 0, Math.PI / 2);
+    this.altitude = altitude;
     return this.commit();
   }
 
@@ -379,6 +377,11 @@ export class HeliostatRig {
     return target
       .set(0, 0, CONFIG.mirrorFront)
       .applyMatrix4(this.altitudePivot.matrixWorld);
+  }
+
+  /** World position where the azimuth and elevation rotation axes meet. */
+  getRotationCenter(target = new THREE.Vector3()) {
+    return this.altitudePivot.getWorldPosition(target);
   }
 }
 
@@ -547,6 +550,40 @@ export class HeliostatField {
 
   get(id) {
     return typeof id === 'number' ? this.rigs[id] : this.byId.get(id);
+  }
+
+  /** Plain data for the editor worker; no Three.js objects cross the boundary. */
+  getMirrorSnapshots() {
+    const center = new THREE.Vector3();
+    return this.rigs.map((rig) => {
+      rig.getRotationCenter(center);
+      return {
+        id: rig.id,
+        pos: { x: center.x, y: center.y, z: center.z },
+        azimuth: rig.azimuth,
+        altitude: rig.altitude,
+        elevation: rig.altitude,
+      };
+    });
+  }
+
+  /** Apply an entire editor callback atomically, uploading each buffer once. */
+  applyCommands(commands) {
+    const poses = validateMirrorCommands(commands, this.byId);
+    let updatedCount = 0;
+    for (const [rig, pose] of poses) {
+      if (rig.azimuth === pose.azimuth && rig.altitude === pose.altitude) continue;
+      rig.azimuth = pose.azimuth;
+      rig.altitude = pose.altitude;
+      rig.commit(false);
+      this.updateRig(rig, false);
+      updatedCount += 1;
+    }
+    if (updatedCount) {
+      this.flagBuffers();
+      this.onChange?.();
+    }
+    return updatedCount;
   }
 
   dispose() {

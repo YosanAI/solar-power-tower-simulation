@@ -12,6 +12,7 @@
   </head>
   <body>
     <main id="viewport" aria-label="Solar power tower scene"></main>
+    <aside id="scene-controls" aria-label="Day simulation settings"></aside>
     <div id="sun-controls" aria-label="Sun position">
       <label for="sun-time"
         ><span>Time of day</span><output id="time-value" for="sun-time">10:00</output></label
@@ -51,6 +52,34 @@
         value="45.1"
       />
     </div>
+    <section id="script-panel" class="script-panel" aria-labelledby="script-title" data-running="false" data-collapsed="false">
+      <button id="resize-editor" class="script-resize" type="button" aria-label="Resize editor" title="Drag to resize; arrow keys adjust size">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 12 8-8M4 8v4h4M8 4h4v4"/></svg>
+      </button>
+      <header class="script-header">
+        <div>
+          <h1 id="script-title">Mirror controller</h1>
+          <p title="updateMirrors(mirrorList, sunData, receiverTargetPos)">updateMirrors(mirrorList, sunData, receiverTargetPos)</p>
+        </div>
+        <div class="script-actions">
+          <button id="toggle-script" type="button" title="Run code (Ctrl / Cmd + Enter)" disabled>Run</button>
+          <button id="toggle-editor" class="script-collapse" type="button" aria-label="Collapse editor" aria-expanded="true" aria-controls="script-body" title="Collapse editor">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+          </button>
+        </div>
+      </header>
+      <div id="script-body" class="script-body">
+        <div id="code-editor"></div>
+        <div class="script-reference">
+          <span>Angles: radians · pos: world center of the rotation axes</span>
+          <code class="script-reference-data">mirrorList: [{ id, pos: { x, y, z }, … }]</code>
+          <code>mirror.setPose({ azimuth, elevation }) · setAzimuth(rad) · setElevation(rad)</code>
+          <code class="script-reference-data">sunData: { azimuth, elevation } · receiverTargetPos: { x, y, z }</code>
+          <code>Math · THREE · console</code>
+        </div>
+        <output id="script-status" class="script-status" role="status" aria-live="polite">Preparing scene…</output>
+      </div>
+    </section>
     <div id="loading" role="status">Loading scene…</div>
     <script type="module" src="./src/main.js"></script>
   </body>

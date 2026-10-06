@@ -129,7 +129,8 @@ export class Atmosphere {
     this.environmentGround.material.color.setScalar(0.07 + 0.93 * daylight);
     this.renderer.toneMappingExposure = 0.96;
 
-    this.environmentDue = performance.now() + 240;
+    // Continuous day playback must not keep postponing the next environment.
+    if (!this.environmentDue) this.environmentDue = performance.now() + 500;
     this.shadowKey = '';
     this.onChange?.();
     return this;
