@@ -42,7 +42,7 @@ canvas { outline: none; }
 }
 .ray-legend span::before { content: ''; display: inline-block; width: 12px; height: 2px; margin: 0 4px 3px 0; }
 .ray-incidence::before { background: #ffcd40; }
-.ray-reflection::before { background: #5eff7e; }
+.ray-reflection::before { background: #ff4040; }
 .ray-normal::before { background: #47d9ff; }
 #loading {
   position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);

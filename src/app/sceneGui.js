@@ -60,7 +60,7 @@ export function createSceneGui({ api }) {
   const debug = gui.addFolder('Debug');
   const showRays = identify(debug.add(values, 'showRays').name('Show rays'), 'showRays');
   showRays.onChange(value => api.setShowRays(value));
-  showRays.domElement.title = 'Show incidence (yellow), reflection (green), and mirror normal (cyan).';
+  showRays.domElement.title = 'Show incidence (yellow), reflection (red), and mirror normal (cyan).';
   const legend = document.createElement('li');
   legend.className = 'ray-legend';
   legend.innerHTML = '<span class="ray-incidence">Incidence</span><span class="ray-reflection">Reflection</span><span class="ray-normal">Normal</span>';

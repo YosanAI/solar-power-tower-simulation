@@ -3,7 +3,7 @@ import * as THREE from 'three';
 const RAY_LAYER = 31;
 const COLORS = {
   incidence: 0xffd54f,
-  reflection: 0x40d66b,
+  reflection: 0xff4040,
   normal: 0x39d5ff,
 };
 

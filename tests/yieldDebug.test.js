@@ -38,7 +38,7 @@ test('debug rays start hidden and use three colored batches on a dedicated camer
     assert.equal(debug.group.parent, scene);
     assert.equal(debug.group.children.length, 3);
     assert.equal(debug.lines.incidence.material.color.getHex(), 0xffd54f);
-    assert.equal(debug.lines.reflection.material.color.getHex(), 0x40d66b);
+    assert.equal(debug.lines.reflection.material.color.getHex(), 0xff4040);
     assert.equal(debug.lines.normal.material.color.getHex(), 0x39d5ff);
 
     const probeCamera = new THREE.Camera();
