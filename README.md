@@ -12,7 +12,7 @@ npm run dev
 Open the local URL printed by Vite. Drag to orbit, right-drag to pan, and scroll or pinch to zoom.
 
 ```sh
-npm test         # Solar position and daylight-range checks
+npm test         # Solar position, optics, energy integration and controller checks
 npm run build    # Production files in dist/
 npm run preview  # Preview the production build
 ```
@@ -34,6 +34,20 @@ heliostat.setElevation(Math.PI / 4);
 ```
 
 Rig angles are radians; +Y is up and azimuth zero points toward +Z. Mirror reflections use four fixed environment probes, so nearby-object parallax is approximate. Three.js stays pinned to the original scene's version, `0.180.0`.
+
+## Receiver yield
+
+The top-left display shows accumulated **MWh of thermal energy** for the simulated day, with instantaneous receiver power in **MW** below. The scene contains **2,045 dual-pane mirrors**, each with **15.18 m²** of reflecting glass. The score resets after the first successful sunrise callback of a new Run, accumulates during the 12-second playback, and retains its final or partial value after completion, Stop or an error. Sun scrubbing and mirror edits while stopped update power without adding energy.
+
+Energy integrates power over the reference day's actual solar hours, using midpoint samples at most one solar minute apart. Between controller responses, mirrors retain their committed poses while the sun moves; delayed commands cannot earn energy retroactively. A manual sun edit during playback holds that sun position until automatic playback resumes. Browser background time is excluded by the existing visible-frame clock.
+
+The model uses [Ineichen/Perez clear-sky DNI](https://pvlib-python.readthedocs.io/en/stable/_modules/pvlib/clearsky.html), the front-face incidence cosine and geometric reflection. A finite Gaussian beam approximates the flat panes' projected footprint, the solar disk and doubled mirror slope error. Capture falls gradually with the beam's offset from the receiver; beyond the receiver silhouette plus three beam standard deviations it becomes exactly zero. The two-pane gap adds footprint width without reflecting area. A projected rectangle approximates the existing cylindrical absorber, **12.76 m across and 18.1 m tall**, at **139.3 m** height.
+
+[SAM's heliostat-field guidance](https://samrepo.nlr.gov/help/iph_mspt_heliostat_field.html) informs the optical factors. Defaults in `CONFIG.yield` are 0.923 reflectivity, 0.97 cleanliness, 0.93 field-average shading/blocking efficiency and 0.94 absorber absorptance, plus range-dependent atmospheric transmission. Surface slope error is 1.5 mrad, tracking spread 1 mrad and solar angular radius 4.65 mrad. The clear-sky atmosphere uses Linke turbidity 3 at sea level. These are engineering assumptions: no measured weather, individual-mirror occlusion, thermal receiver losses or power-cycle conversion is modeled. The result estimates absorbed solar heat, not generated electricity.
+
+In the configuration panel, **Debug → Show rays** is off by default. Enable it for yellow incidence segments, green reflected segments and cyan mirror normals. Each reflected segment has exactly the mirror-center-to-receiver-center length, including misses. Diagnostics update on sun and mirror changes, use three batched draws, and stay out of reflection probes and shadows.
+
+Console APIs include `solarScene.getYieldState()`, `getShowRays()` and `setShowRays(true)`. `getYieldState()` provides raw `energyWh`/`powerWatts`, display `energyMWh`/`powerMW`, capture fraction, contributing mirrors and DNI. Optical calculations use the reflecting face's world position (`getMirrorCenter()`), including its offset from the controller's rotation-pivot position.
 
 ## Embedded mirror controller
 

@@ -10,6 +10,22 @@ export const CONFIG = Object.freeze({
   azimuthAxisHeight: 2.34,
   elevationAxisOffset: 0.32,
   receiverCenter: [0, 139.3, 0],
+  receiverRadius: 6.38,
+  receiverHeight: 18.1,
+  yield: Object.freeze({
+    mirrorReflectivity: 0.923, // Solar-weighted reflectance of 4 mm mirror glass.
+    cleanliness: 0.97,
+    shadingBlockingEfficiency: 0.93, // Field-average approximation, not ray-traced occlusion.
+    receiverAbsorptance: 0.94,
+    atmosphericExtinctionPerMetre: 0.00012,
+    slopeErrorRadians: 0.0015, // Reflected angular error is twice the surface slope error.
+    trackingErrorRadians: 0.001,
+    sunAngularRadiusRadians: 0.00465,
+    linkeTurbidity: 3, // Clear-sky reference atmosphere.
+    siteAltitudeMetres: 0,
+    integrationStepMinutes: 1,
+    normalDebugLengthMetres: 12,
+  }),
   fieldInnerRadius: 56,
   fieldOuterRadius: 337,
   sunTimeMinutes: 10 * 60,

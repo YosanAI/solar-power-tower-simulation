@@ -2,11 +2,13 @@ import './style.css';
 import { createSolarScene } from './app/createSolarScene.js';
 import { createCodeEditor } from './editor/code-editor.js';
 import { createSceneGui } from './app/sceneGui.js';
+import { createYieldHud } from './app/yieldHud.js';
 
 const loadingMessage = document.getElementById('loading');
 let solarScene;
 let codeEditor;
 let sceneGui;
+let yieldHud;
 
 function showBootError(error) {
   console.error(error);
@@ -28,15 +30,18 @@ try {
       sceneGui?.sync();
       codeEditor?.sunChanged();
     },
+    onYieldChange(state) { yieldHud?.sync(state); },
     onFrame(deltaTime) { codeEditor?.tick(deltaTime); sceneGui?.sync(); },
     onDispose() {
       codeEditor?.destroy();
       sceneGui?.destroy();
+      yieldHud?.destroy();
       window.solarSceneReady = false;
       window.solarReflectionsReady = false;
     },
   });
   sceneGui = createSceneGui({ api: solarScene });
+  yieldHud = createYieldHud({ api: solarScene });
   codeEditor = createCodeEditor({ api: solarScene });
   window.solarScene = solarScene;
   window.mirrorEditor = codeEditor;

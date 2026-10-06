@@ -6,6 +6,26 @@ html, body {
 }
 #viewport, canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 canvas { outline: none; }
+#yield-hud {
+  position: fixed; z-index: 2;
+  top: max(16px, env(safe-area-inset-top));
+  left: max(16px, env(safe-area-inset-left));
+  max-width: calc(100vw - 32px); padding: 15px 19px 14px;
+  color: #f2f8fc; background: #102c40e6;
+  border: 1px solid #c8e2f326; border-radius: 10px;
+  box-shadow: 0 4px 20px #07172329;
+  pointer-events: none;
+}
+#yield-hud[hidden] { display: none; }
+#yield-title {
+  margin: 0 0 4px; color: #bdcfdc;
+  font-size: 10px; font-weight: 600; letter-spacing: .11em; text-transform: uppercase;
+}
+.yield-total { display: flex; align-items: baseline; gap: 9px; white-space: nowrap; }
+#yield-energy { font-size: 36px; line-height: 1.15; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -.035em; }
+.yield-unit { color: #dfedf7; font-size: 15px; font-weight: 500; }
+.yield-instant { margin: 7px 0 0; color: #cedce6; font-size: 12px; font-variant-numeric: tabular-nums; }
+.yield-instant span { color: #a2b7c7; margin-left: 2px; }
 #scene-controls {
   position: fixed; z-index: 3;
   top: max(16px, env(safe-area-inset-top));
@@ -16,6 +36,14 @@ canvas { outline: none; }
 #scene-controls .dg.main { width: 100% !important; }
 #scene-controls .dg .close-button { position: relative; width: 100% !important; }
 #scene-controls input[readonly] { cursor: default; color: #c4d3df; }
+#scene-controls .ray-legend {
+  display: flex; gap: 12px; padding: 5px 8px;
+  border: 0; color: #c4d3df; font-size: 10px; line-height: 18px;
+}
+.ray-legend span::before { content: ''; display: inline-block; width: 12px; height: 2px; margin: 0 4px 3px 0; }
+.ray-incidence::before { background: #ffcd40; }
+.ray-reflection::before { background: #5eff7e; }
+.ray-normal::before { background: #47d9ff; }
 #loading {
   position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
   padding: 12px 18px; border-radius: 5px; background: #122436d9;
@@ -23,8 +51,10 @@ canvas { outline: none; }
 }
 #loading[hidden] { display: none; }
 @media (max-width: 600px) {
+  #yield-hud { top: max(10px, env(safe-area-inset-top)); left: max(10px, env(safe-area-inset-left)); padding: 11px 15px; }
+  #yield-energy { font-size: 30px; }
   #scene-controls {
-    top: 10px; right: 10px; width: 260px;
-    max-height: max(80px, calc(100dvh - var(--editor-panel-height, min(350px, 48dvh)) - 34px));
+    top: 120px; right: 10px; width: 260px;
+    max-height: max(80px, calc(100dvh - var(--editor-panel-height, min(350px, 48dvh)) - 144px));
   }
 }

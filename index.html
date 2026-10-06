@@ -12,6 +12,11 @@
   </head>
   <body>
     <main id="viewport" aria-label="Solar power tower scene"></main>
+    <section id="yield-hud" aria-labelledby="yield-title" title="Estimated solar thermal energy captured at the receiver so far in the simulated day.">
+      <h2 id="yield-title">Daily thermal yield</h2>
+      <div class="yield-total"><output id="yield-energy" aria-label="Accumulated thermal energy in megawatt-hours">0.000</output><span class="yield-unit">MWh</span></div>
+      <p class="yield-instant"><output id="yield-power" aria-label="Instantaneous thermal power in megawatts">0.00</output> MW <span>thermal now</span></p>
+    </section>
     <aside id="scene-controls" aria-label="Scene settings"></aside>
     <section id="script-panel" class="script-panel" aria-labelledby="script-title" data-running="false" data-collapsed="false">
       <button id="resize-editor" class="script-resize" type="button" aria-label="Resize editor" title="Drag to resize; arrow keys adjust size">

@@ -507,7 +507,7 @@ export class HeliostatField {
       mesh.setMatrixAt(instanceIndex, matrices.pitch);
     if (notify) {
       this.flagBuffers();
-      this.onChange?.();
+      this.onChange?.(rig);
     }
   }
 

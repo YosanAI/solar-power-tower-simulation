@@ -226,6 +226,144 @@ test('slow callbacks have backpressure and the next callback sees accumulated vi
   assert.equal(h.workers[0].messages.length, 4, 'zero time without a sun change executes no extra code');
 });
 
+test('yield starts after the successful sunrise batch and advances while later callbacks are pending', (t) => {
+  const h = createHarness(t);
+  const yieldEvents = [];
+  const apply = h.api.applyMirrorCommands;
+  const setSunTime = h.api.setSunTime;
+  h.api.applyMirrorCommands = (batch) => {
+    apply(batch);
+    yieldEvents.push({ type: 'apply', azimuth: h.rigs[0].azimuth });
+  };
+  h.api.setSunTime = (minutes, options) => {
+    yieldEvents.push({ type: 'sun', minutes, options });
+    setSunTime(minutes);
+  };
+  h.api.beginYieldRun = () => yieldEvents.push({
+    type: 'begin', elapsed: h.runner.getTime(),
+    minutes: h.api.getSunData().timeMinutes, azimuth: h.rigs[0].azimuth,
+  });
+  h.api.advanceYield = (elapsed) => yieldEvents.push({
+    type: 'advance', elapsed, azimuth: h.rigs[0].azimuth,
+  });
+  h.api.endYieldRun = () => yieldEvents.push({ type: 'end' });
+
+  h.runner.run(DEFAULT_CODE);
+  h.ready();
+  assert.equal(yieldEvents.some(({ type }) => type === 'begin' || type === 'advance'), false);
+  h.runner.tick(8);
+  h.runner.tick(8);
+  assert.equal(h.runner.getTime(), 0, 'first-callback latency produces no energy');
+  assert.equal(yieldEvents.some(({ type }) => type === 'begin' || type === 'advance'), false);
+  assert.deepEqual(yieldEvents.find(({ type }) => type === 'sun'), {
+    type: 'sun', minutes: 360, options: { playback: true },
+  });
+
+  h.respond([{ id: 'H-0', method: 'setAzimuth', value: 0.4 }]);
+  assert.deepEqual(yieldEvents.slice(-2), [
+    { type: 'apply', azimuth: 0.4 },
+    { type: 'begin', elapsed: 0, minutes: 360, azimuth: 0.4 },
+  ]);
+  h.runner.tick(0.2);
+  const firstAdvance = yieldEvents.findIndex(({ type }) => type === 'advance');
+  assert.ok(firstAdvance < yieldEvents.findIndex(({ type, minutes }) => type === 'sun' && minutes > 360),
+    'integrate previously committed poses before updating the visible sun');
+  h.runner.tick(0.3);
+  h.runner.tick(0.4);
+  const advances = yieldEvents.filter(({ type }) => type === 'advance');
+  assert.equal(advances.length, 3, 'pending worker responses must not freeze the energy clock');
+  for (const [index, expected] of [0.2, 0.5, 0.9].entries()) {
+    assert.ok(Math.abs(advances[index].elapsed - expected) < 1e-12);
+    assert.equal(advances[index].azimuth, 0.4, 'new callback commands do not affect elapsed history');
+  }
+  assert.equal(yieldEvents.filter(({ type }) => type === 'sun').length, 2,
+    'energy advances independently of the worker callback cadence');
+  h.respond([{ id: 'H-0', method: 'setAzimuth', value: 0.8 }]);
+  h.runner.tick(0.1);
+  const latestAdvance = yieldEvents.filter(({ type }) => type === 'advance').at(-1);
+  assert.ok(Math.abs(latestAdvance.elapsed - 1) < 1e-12);
+  assert.equal(latestAdvance.azimuth, 0.8);
+  assert.equal(yieldEvents.filter(({ type }) => type === 'begin').length, 1);
+});
+
+test('yield stops at the complete solar day and restarts only after a new successful callback', (t) => {
+  const h = createHarness(t);
+  const advances = [];
+  const lifecycle = [];
+  h.api.beginYieldRun = () => lifecycle.push('begin');
+  h.api.advanceYield = (elapsed) => advances.push(elapsed);
+  h.api.endYieldRun = () => lifecycle.push('end');
+  h.runner.run(DEFAULT_CODE);
+  h.ready();
+  h.runner.tick(0);
+  h.respond();
+  h.runner.tick(20);
+  assert.deepEqual(advances, [DAY_DURATION_SECONDS], 'a low-FPS frame integrates at most one day');
+  assert.equal(h.runner.isRunning(), true, 'the sunset response is still pending');
+  h.respond();
+  assert.equal(lifecycle.at(-1), 'end');
+  h.runner.tick(20);
+  assert.deepEqual(advances, [DAY_DURATION_SECONDS]);
+
+  h.runner.run(DEFAULT_CODE);
+  h.ready();
+  h.runner.tick(5);
+  assert.equal(lifecycle.filter((event) => event === 'begin').length, 1,
+    'starting and compiling a new run cannot reset the prior score');
+  h.respond();
+  assert.equal(lifecycle.filter((event) => event === 'begin').length, 2);
+  h.runner.tick(0.5);
+  assert.deepEqual(advances, [DAY_DURATION_SECONDS, 0.5]);
+  h.runner.stop();
+  const stoppedLifecycle = [...lifecycle];
+  h.runner.tick(1);
+  assert.deepEqual(lifecycle, stoppedLifecycle);
+  assert.deepEqual(advances, [DAY_DURATION_SECONDS, 0.5]);
+});
+
+test('failed startup and stale worker responses cannot begin or advance yield', (t) => {
+  const h = createHarness(t);
+  let begins = 0;
+  const advances = [];
+  h.api.beginYieldRun = () => { begins += 1; };
+  h.api.advanceYield = (elapsed) => advances.push(elapsed);
+  h.api.endYieldRun = () => {};
+  h.runner.run(DEFAULT_CODE);
+  h.ready();
+  h.runner.tick(0);
+  h.respond([{ id: 'H-0', method: 'unknown', value: 0.5 }]);
+  assert.equal(begins, 0);
+  assert.deepEqual(advances, []);
+
+  h.runner.run(DEFAULT_CODE);
+  h.ready();
+  h.runner.tick(0);
+  const deliverOldResponse = h.workers.at(-1).onmessage;
+  h.runner.stop();
+  h.runner.run(DEFAULT_CODE);
+  deliverOldResponse({ data: { type: 'frame', id: 1, commands: [] } });
+  assert.equal(begins, 0, 'a cancelled sunrise callback cannot reset yield');
+  h.ready();
+  h.runner.tick(0);
+  h.respond();
+  assert.equal(begins, 1);
+  assert.deepEqual(advances, []);
+});
+
+test('a yield integration failure stops the worker and reports the error without breaking the frame loop', (t) => {
+  const h = createHarness(t);
+  h.api.advanceYield = () => { throw new Error('Receiver yield sample failed.'); };
+  h.runner.run(DEFAULT_CODE);
+  h.ready();
+  h.runner.tick(0);
+  h.respond();
+  assert.doesNotThrow(() => h.runner.tick(0.1));
+  assert.equal(h.runner.isRunning(), false);
+  assert.equal(h.workers[0].terminated, 1);
+  assert.equal(h.errors.length, 1);
+  assert.equal(h.errors[0].message, 'Receiver yield sample failed.');
+});
+
 test('manual sun changes receive one current-sun callback before playback resumes', (t) => {
   const h = createHarness(t);
   h.runner.run(DEFAULT_CODE);

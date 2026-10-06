@@ -13,12 +13,16 @@ import { FieldReflections } from '../scene/reflections.js';
 import { disposeSceneResources } from './disposeScene.js';
 import { clamp, radians } from '../utils/math.js';
 import { getSolarDay, getSunPosition } from '../utils/solarTime.js';
+import { YieldTracker } from './yieldTracker.js';
+import { YieldDebug } from '../scene/yieldDebug.js';
+import { DAY_DURATION_SECONDS } from '../editor/simulation.js';
 
 export function createSolarScene({
   viewport,
   onReady,
   onError,
   onSunChange,
+  onYieldChange,
   onFrame,
   onDispose,
 }) {
@@ -29,6 +33,8 @@ export function createSolarScene({
   let firstFrame = true;
   let lastFrameTime = null;
   let sunTimeMinutes = CONFIG.sunTimeMinutes;
+  let yieldTracker;
+  let yieldDebug;
   const solarDay = Object.freeze(getSolarDay(CONFIG.solarDay));
   const receiverTargetPos = Object.freeze({
     x: CONFIG.receiverCenter[0], y: CONFIG.receiverCenter[1], z: CONFIG.receiverCenter[2],
@@ -64,6 +70,7 @@ export function createSolarScene({
     14500,
   );
   camera.position.set(-128, 8.2, 192);
+  camera.layers.enable(31); // Diagnostics are excluded from shadow/reflection cameras.
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 58, 0);
   controls.enableDamping = true;
@@ -89,12 +96,18 @@ export function createSolarScene({
     landscape.ground,
     invalidate,
   );
-  const field = new HeliostatField(scene, layout, materials, () => {
+  const field = new HeliostatField(scene, layout, materials, rig => {
     invalidate();
     atmosphere.sun.shadow.needsUpdate = true;
     renderer.shadowMap.needsUpdate = true;
+    yieldTracker?.refresh(rig);
+    if (yieldDebug?.enabled) yieldDebug.update(yieldTracker.records);
+    if (yieldTracker) onYieldChange?.(yieldTracker.getState());
   });
   field.updateDetail(camera.position);
+  yieldTracker = new YieldTracker(field.rigs, receiverTargetPos, CONFIG, solarDay, DAY_DURATION_SECONDS);
+  yieldDebug = new YieldDebug(scene, field.rigs.length, CONFIG.yield.normalDebugLengthMetres);
+  yieldTracker.updateSun({ azimuth: radians(atmosphere.azimuth), elevation: radians(atmosphere.elevation) });
   const reflections = new FieldReflections(scene, renderer, field, atmosphere);
 
   function resize() {
@@ -167,7 +180,10 @@ export function createSolarScene({
       reflections.pending < 0 && !atmosphere.environmentDue;
   });
 
-  function notifySunChange() {
+  function notifySunChange(playback = false) {
+    yieldTracker.updateSun({ azimuth: radians(atmosphere.azimuth), elevation: radians(atmosphere.elevation) }, { playback });
+    if (yieldDebug.enabled) yieldDebug.update(yieldTracker.records);
+    onYieldChange?.(yieldTracker.getState());
     onSunChange?.(atmosphere.azimuth, atmosphere.elevation, sunTimeMinutes);
   }
 
@@ -184,6 +200,7 @@ export function createSolarScene({
       handleContextLost,
     );
     reflections.dispose();
+    yieldDebug.dispose();
     field.dispose();
     atmosphere.dispose();
     disposeSceneResources(scene, materials);
@@ -201,7 +218,33 @@ export function createSolarScene({
     config: CONFIG,
     getHeliostat: (id) => field.get(id),
     getMirrorSnapshots: () => field.getMirrorSnapshots(),
-    applyMirrorCommands: (commands) => field.applyCommands(commands),
+    applyMirrorCommands(commands) {
+      const count = field.applyCommands(commands);
+      if (!count) {
+        yieldTracker.refresh();
+        if (yieldDebug.enabled) yieldDebug.update(yieldTracker.records);
+        onYieldChange?.(yieldTracker.getState());
+      }
+      return count;
+    },
+    getYieldState: () => yieldTracker.getState(),
+    getShowRays: () => yieldDebug.enabled,
+    setShowRays(enabled) {
+      yieldDebug.setEnabled(enabled, yieldTracker.records);
+      invalidate();
+    },
+    beginYieldRun() {
+      yieldTracker.beginRun();
+      onYieldChange?.(yieldTracker.getState());
+    },
+    advanceYield(elapsedTime) {
+      yieldTracker.advanceTo(elapsedTime);
+      onYieldChange?.(yieldTracker.getState());
+    },
+    endYieldRun() {
+      yieldTracker.endRun();
+      onYieldChange?.(yieldTracker.getState());
+    },
     getSolarDay: () => solarDay,
     getReceiverTargetPos: () => ({ ...receiverTargetPos }),
     getSunData() {
@@ -211,12 +254,12 @@ export function createSolarScene({
         ...(sunTimeMinutes === null ? {} : { timeMinutes: sunTimeMinutes }),
       };
     },
-    setSunTime(minutes) {
+    setSunTime(minutes, { playback = false } = {}) {
       if (!Number.isFinite(minutes)) throw new TypeError('Solar time must be finite minutes.');
       sunTimeMinutes = clamp(minutes, solarDay.start, solarDay.end);
       const sun = getSunPosition(sunTimeMinutes, solarDay);
       atmosphere.setDegrees(sun.azimuth, sun.elevation);
-      notifySunChange();
+      notifySunChange(playback);
     },
     setSun(angles) {
       atmosphere.setSun(angles);

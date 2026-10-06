@@ -17,6 +17,7 @@ export function createSceneGui({ api }) {
     longitude: String(day.longitude),
     sunrise: formatSolarTime(day.sunrise),
     sunset: formatSolarTime(day.sunset),
+    showRays: api.getShowRays(),
   };
 
   function identify(controller, name) {
@@ -24,6 +25,7 @@ export function createSceneGui({ api }) {
     const labels = {
       timeLabel: 'Time of day', timeMinutes: 'Solar time in minutes',
       azimuth: 'Sun azimuth in radians', elevation: 'Sun elevation in radians',
+      showRays: 'Show rays',
     };
     controller.domElement.querySelector('input')?.setAttribute('aria-label', labels[name] || name);
     return controller;
@@ -55,6 +57,16 @@ export function createSceneGui({ api }) {
   readOnly(reference.add(values, 'sunrise').name('Sunrise'), 'sunrise');
   readOnly(reference.add(values, 'sunset').name('Sunset'), 'sunset');
 
+  const debug = gui.addFolder('Debug');
+  const showRays = identify(debug.add(values, 'showRays').name('Show rays'), 'showRays');
+  showRays.onChange(value => api.setShowRays(value));
+  showRays.domElement.title = 'Show incidence (yellow), reflection (green), and mirror normal (cyan).';
+  const legend = document.createElement('li');
+  legend.className = 'ray-legend';
+  legend.innerHTML = '<span class="ray-incidence">Incidence</span><span class="ray-reflection">Reflection</span><span class="ray-normal">Normal</span>';
+  debug.domElement.querySelector('ul').appendChild(legend);
+  debug.open();
+
   const pointers = new Set();
   const begin = event => pointers.add(event.pointerId);
   const end = event => { pointers.delete(event.pointerId); sync(); };
@@ -65,6 +77,8 @@ export function createSceneGui({ api }) {
   window.addEventListener('blur', clear);
 
   function sync() {
+    const raysVisible = api.getShowRays();
+    if (values.showRays !== raysVisible) { values.showRays = raysVisible; showRays.updateDisplay(); }
     const state = getSunControlState(api.getSunData(), values.timeMinutes);
     if (values.timeLabel !== state.timeLabel) {
       values.timeLabel = state.timeLabel;

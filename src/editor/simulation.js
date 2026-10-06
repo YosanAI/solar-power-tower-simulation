@@ -61,6 +61,7 @@ export function createSimulationRunner(api, {
     started = false;
     pendingId = null;
     sunDirty = false;
+    api.endYieldRun?.();
     onStop();
     onStateChange(false, phase);
   }
@@ -106,6 +107,7 @@ export function createSimulationRunner(api, {
         clearTimeout(watchdog);
         pendingId = null;
         if (!started) {
+          api.beginYieldRun?.();
           started = true;
           onStart();
         }
@@ -154,7 +156,13 @@ export function createSimulationRunner(api, {
     tick(deltaTime) {
       if (!worker || !ready || !Number.isFinite(deltaTime) || deltaTime < 0) return;
       // Use visible elapsed seconds, so the duration remains meaningful at low FPS.
-      if (started) elapsedTime = Math.min(DAY_DURATION_SECONDS, elapsedTime + deltaTime);
+      if (started) {
+        try {
+          elapsedTime = Math.min(DAY_DURATION_SECONDS, elapsedTime + deltaTime);
+          // Integrate held poses before either the sun or commands change.
+          api.advanceYield?.(elapsedTime);
+        } catch (error) { fail(error); return; }
+      }
       // Never queue work behind slow code; the next callback sees the latest time.
       if (pendingId !== null) return;
       if (started && elapsedTime === lastSentTime && !sunDirty) return;
@@ -166,7 +174,7 @@ export function createSimulationRunner(api, {
         if (!started || !sunDirty || finalFrame) {
           updatingSun = true;
           try {
-            api.setSunTime(day.sunrise + (day.sunset - day.sunrise) * (elapsedTime / DAY_DURATION_SECONDS));
+            api.setSunTime(day.sunrise + (day.sunset - day.sunrise) * (elapsedTime / DAY_DURATION_SECONDS), { playback: true });
           } finally { updatingSun = false; }
         }
         sunDirty = false;
