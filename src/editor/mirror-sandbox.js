@@ -17,13 +17,12 @@ export function createMirrorSandbox(QuickJS, source, initialMirrors, limits = SA
         throw new TypeError('Each mirror must have a unique, nonempty string id.');
       }
       ids.add(mirror.id);
-      const altitude = mirror.altitude ?? mirror.elevation;
-      if (!mirror.pos || ![mirror.pos.x, mirror.pos.y, mirror.pos.z, mirror.azimuth, altitude].every(Number.isFinite)) {
+      if (!mirror.pos || ![mirror.pos.x, mirror.pos.y, mirror.pos.z, mirror.azimuth, mirror.elevation].every(Number.isFinite)) {
         throw new TypeError('Mirror positions and angles must be finite numbers.');
       }
       // Compact transport avoids repeating property names for thousands of rigs.
-      // The guest reconstructs the public {id, pos, azimuth, altitude} API.
-      return [mirror.id, mirror.pos.x, mirror.pos.y, mirror.pos.z, mirror.azimuth, altitude];
+      // The guest reconstructs the public {id, pos, azimuth, elevation} API.
+      return [mirror.id, mirror.pos.x, mirror.pos.y, mirror.pos.z, mirror.azimuth, mirror.elevation];
     });
     knownIds = ids;
     return copies;
@@ -156,8 +155,8 @@ export function createMirrorSandbox(QuickJS, source, initialMirrors, limits = SA
           if (typeof value !== "number" || !finite(value)) throw new Fail("Angle must be a finite number in radians.");
           return value;
         }
-        function altitude(value) { return min(halfPi, max(0, value)); }
-        function queue(id, method, az, alt, el) {
+        function elevation(value) { return min(halfPi, max(0, value)); }
+        function queue(id, method, az, el) {
           if (!active) throw new Fail("Mirror commands must be called inside updateMirrors.");
           if (commands.length >= ${limits.commandsPerFrame}) throw new RangeFail("Too many mirror commands in one callback.");
           if (activeIds[id] !== true) throw new RangeFail("Unknown mirror: " + id);
@@ -167,7 +166,6 @@ export function createMirrorSandbox(QuickJS, source, initialMirrors, limits = SA
           if (method === "setPose") {
             const pose = create(null);
             if (az !== undefined) pose.azimuth = az;
-            if (alt !== undefined) pose.altitude = alt;
             if (el !== undefined) pose.elevation = el;
             command.pose = pose;
           } else if (method !== "reset") command.value = az;
@@ -177,35 +175,31 @@ export function createMirrorSandbox(QuickJS, source, initialMirrors, limits = SA
           const id = snapshot[0];
           let state = states[id];
           if (!state) {
-            state = states[id] = { azimuth: 0, altitude: halfPi, sourceAzimuth: 0, sourceAltitude: halfPi, pos: null };
+            state = states[id] = { azimuth: 0, elevation: halfPi, sourceAzimuth: 0, sourceElevation: halfPi, pos: null };
             mirrors[id] = freeze({
               id,
               get pos() { return state.pos; },
               get azimuth() { return state.azimuth; },
-              get altitude() { return state.altitude; },
-              get elevation() { return state.altitude; },
+              get elevation() { return state.elevation; },
               setAzimuth(value) { angle(value); queue(id, "setAzimuth", value); state.azimuth = value; },
-              setAltitude(value) { angle(value); queue(id, "setAltitude", value); state.altitude = altitude(value); },
-              setElevation(value) { angle(value); queue(id, "setElevation", value); state.altitude = altitude(value); },
+              setElevation(value) { angle(value); queue(id, "setElevation", value); state.elevation = elevation(value); },
               setPose(pose) {
                 if (!pose || typeof pose !== "object" || apply(tag, pose, []) === "[object Array]") throw new Fail("Mirror pose must be an object containing radian angles.");
-                const az = pose.azimuth, alt = pose.altitude, el = pose.elevation;
+                if ("altitude" in pose) throw new Fail("Mirror pose uses elevation; altitude is not supported.");
+                const az = pose.azimuth, el = pose.elevation;
                 if (az !== undefined) angle(az);
-                if (alt !== undefined) angle(alt);
                 if (el !== undefined) angle(el);
-                if (alt !== undefined && el !== undefined && alt !== el) throw new Fail("Mirror altitude and elevation must agree when both are supplied.");
-                queue(id, "setPose", az, alt, el);
+                queue(id, "setPose", az, el);
                 if (az !== undefined) state.azimuth = az;
-                if (alt !== undefined || el !== undefined) state.altitude = altitude(alt === undefined ? el : alt);
+                if (el !== undefined) state.elevation = elevation(el);
               },
-              reset() { queue(id, "reset"); state.azimuth = 0; state.altitude = halfPi; },
+              reset() { queue(id, "reset"); state.azimuth = 0; state.elevation = halfPi; },
               getCurrentAzimuth() { return state.azimuth; },
-              getCurrentAltitude() { return state.altitude; },
-              getCurrentElevation() { return state.altitude; },
+              getCurrentElevation() { return state.elevation; },
             });
           }
           state.azimuth = state.sourceAzimuth = snapshot[4];
-          state.altitude = state.sourceAltitude = snapshot[5];
+          state.elevation = state.sourceElevation = snapshot[5];
           if (!state.pos || state.pos.x !== snapshot[1] || state.pos.y !== snapshot[2] || state.pos.z !== snapshot[3]) {
             state.pos = freeze({ x: snapshot[1], y: snapshot[2], z: snapshot[3] });
           }
@@ -232,7 +226,7 @@ export function createMirrorSandbox(QuickJS, source, initialMirrors, limits = SA
               const change = changes[i];
               const state = states[orderedMirrors[change[0]].id];
               state.sourceAzimuth = change[1];
-              state.sourceAltitude = change[2];
+              state.sourceElevation = change[2];
               if (change.length === 6) state.pos = freeze({ x: change[3], y: change[4], z: change[5] });
             }
           }
@@ -242,7 +236,7 @@ export function createMirrorSandbox(QuickJS, source, initialMirrors, limits = SA
           for (let i = 0; i < orderedMirrors.length; i++) {
             const state = states[orderedMirrors[i].id];
             state.azimuth = state.sourceAzimuth;
-            state.altitude = state.sourceAltitude;
+            state.elevation = state.sourceElevation;
           }
           active = true;
           // Give user code its own ordinary array. Private ordering stays intact
@@ -286,14 +280,13 @@ export function createMirrorSandbox(QuickJS, source, initialMirrors, limits = SA
       if (disposed) throw new Error('The sandbox has been stopped.');
       const mirrors = copyMirrors(mirrorSnapshots);
       const mirrorPacket = encodeSnapshots(mirrors);
-      if (!sunData || !Number.isFinite(sunData.azimuth) || !Number.isFinite(sunData.elevation ?? sunData.altitude)) {
+      if (!sunData || !Number.isFinite(sunData.azimuth) || !Number.isFinite(sunData.elevation)) {
         throw new TypeError('Sun angles must be finite radians.');
       }
       if (!receiverTargetPos || ![receiverTargetPos.x, receiverTargetPos.y, receiverTargetPos.z].every(Number.isFinite)) {
         throw new TypeError('Receiver target position must be finite.');
       }
-      const elevation = sunData.elevation ?? sunData.altitude;
-      const sun = { azimuth: sunData.azimuth, elevation, altitude: elevation };
+      const sun = { azimuth: sunData.azimuth, elevation: sunData.elevation };
       for (const key of ['timeMinutes', 'elapsedTime', 'deltaTime']) {
         if (sunData[key] !== undefined) {
           if (!Number.isFinite(sunData[key])) throw new TypeError('Sun time values must be finite.');

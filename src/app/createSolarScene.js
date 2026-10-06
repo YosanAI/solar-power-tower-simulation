@@ -168,7 +168,7 @@ export function createSolarScene({
   });
 
   function notifySunChange() {
-    onSunChange?.(atmosphere.azimuth, atmosphere.altitude, sunTimeMinutes);
+    onSunChange?.(atmosphere.azimuth, atmosphere.elevation, sunTimeMinutes);
   }
 
   function dispose() {
@@ -207,8 +207,7 @@ export function createSolarScene({
     getSunData() {
       return {
         azimuth: radians(atmosphere.azimuth),
-        elevation: radians(atmosphere.altitude),
-        altitude: radians(atmosphere.altitude),
+        elevation: radians(atmosphere.elevation),
         ...(sunTimeMinutes === null ? {} : { timeMinutes: sunTimeMinutes }),
       };
     },
@@ -216,7 +215,7 @@ export function createSolarScene({
       if (!Number.isFinite(minutes)) throw new TypeError('Solar time must be finite minutes.');
       sunTimeMinutes = clamp(minutes, solarDay.start, solarDay.end);
       const sun = getSunPosition(sunTimeMinutes, solarDay);
-      atmosphere.setDegrees(sun.azimuth, sun.altitude);
+      atmosphere.setDegrees(sun.azimuth, sun.elevation);
       notifySunChange();
     },
     setSun(angles) {
@@ -224,8 +223,8 @@ export function createSolarScene({
       sunTimeMinutes = null;
       notifySunChange();
     },
-    setSunDegrees(azimuth, altitude) {
-      atmosphere.setDegrees(azimuth, altitude);
+    setSunDegrees(azimuth, elevation) {
+      atmosphere.setDegrees(azimuth, elevation);
       sunTimeMinutes = null;
       notifySunChange();
     },

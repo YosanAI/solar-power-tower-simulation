@@ -4,7 +4,7 @@ import { CONFIG } from './config.js';
 export function initialMirrorPose() {
   return {
     azimuth: 0,
-    altitude: Math.PI / 2,
+    elevation: Math.PI / 2,
   };
 }
 

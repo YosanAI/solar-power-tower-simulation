@@ -8,21 +8,15 @@ export function normalizeMirrorPose(currentPose, pose = {}) {
   if (!pose || typeof pose !== 'object' || Array.isArray(pose)) {
     throw new TypeError('Mirror pose must be an object containing radian angles.');
   }
-  if (
-    pose.altitude !== undefined &&
-    pose.elevation !== undefined &&
-    pose.altitude !== pose.elevation
-  ) {
-    throw new TypeError('Mirror altitude and elevation must agree when both are supplied.');
+  if ('altitude' in pose) {
+    throw new TypeError('Mirror poses use elevation, not altitude.');
   }
   const azimuth = pose.azimuth === undefined ? currentPose.azimuth : pose.azimuth;
-  const altitude = pose.altitude === undefined
-    ? (pose.elevation === undefined ? currentPose.altitude : pose.elevation)
-    : pose.altitude;
-  if (!Number.isFinite(azimuth) || !Number.isFinite(altitude)) {
+  const elevation = pose.elevation === undefined ? currentPose.elevation : pose.elevation;
+  if (!Number.isFinite(azimuth) || !Number.isFinite(elevation)) {
     throw new TypeError('Rig angles must be finite radians.');
   }
-  return { azimuth, altitude: clamp(altitude, 0, Math.PI / 2) };
+  return { azimuth, elevation: clamp(elevation, 0, Math.PI / 2) };
 }
 
 /**
@@ -53,9 +47,8 @@ export function validateMirrorCommands(commands, rigsOrById) {
       case 'setAzimuth':
         pose = { azimuth: command.value };
         break;
-      case 'setAltitude':
       case 'setElevation':
-        pose = { altitude: command.value };
+        pose = { elevation: command.value };
         break;
       case 'setPose':
         pose = command.pose;
@@ -71,7 +64,7 @@ export function validateMirrorCommands(commands, rigsOrById) {
     }
     // A missing setter value is invalid; partial setPose calls remain supported.
     if (
-      ['setAzimuth', 'setAltitude', 'setElevation'].includes(command.method) &&
+      ['setAzimuth', 'setElevation'].includes(command.method) &&
       !Number.isFinite(command.value)
     ) {
       throw new TypeError('Rig angles must be finite radians.');

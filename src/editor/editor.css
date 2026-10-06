@@ -209,7 +209,7 @@
 @media (max-width: 900px) {
   .script-panel {
     --panel-right-inset: 20px;
-    --panel-top-inset: 320px;
+    --panel-top-inset: 240px;
   }
 
   .script-actions {
@@ -222,7 +222,7 @@
   .script-panel {
     --panel-inset: 12px;
     --panel-right-inset: 12px;
-    --panel-top-inset: 320px;
+    --panel-top-inset: 240px;
     width: var(--editor-width, calc(100vw - 24px));
     height: var(--editor-height, min(350px, 48dvh));
   }
@@ -258,11 +258,11 @@
   }
 }
 
-/* Reserve the right column for sun controls while keeping code readable. */
+/* Keep the dat.gui settings beside the editor in short landscape views. */
 @media (min-width: 601px) and (max-width: 900px) and (max-height: 600px) {
   .script-panel {
-    --panel-top-inset: 130px;
-    --panel-right-inset: 254px;
+    --panel-top-inset: 100px;
+    --panel-right-inset: 320px;
   }
 
   .script-header p {
@@ -280,8 +280,4 @@
   .script-reference-data {
     display: none;
   }
-}
-
-@media (min-width: 601px) and (max-width: 900px) {
-  .script-panel { --panel-right-inset: 254px; }
 }

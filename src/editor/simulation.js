@@ -1,12 +1,26 @@
 import { SANDBOX_LIMITS, validateConsoleEntries, serializeSandboxError } from './sandbox-limits.js';
 
-export const DEFAULT_CODE = `function updateMirrors(mirrorList, sunData, receiverTargetPos) {
-  // Angles are radians. mirror.pos is the rotation-axis intersection.
-  // Uncomment to see the per-mirror API in action.
+export const DAY_DURATION_SECONDS = 12;
+
+export const DEFAULT_CODE = `function updateMirrors(
+  mirrorList /* Array<Mirror> */,
+  sunData /* { azimuth: number, elevation: number } */,
+  receiverTargetPos /* { x: number, y: number, z: number } */
+) {
+  // Mirror: { id: string, pos: { x, y, z }, azimuth, elevation }.
+  // mirror.pos is the mirror position; x, y and z are numbers in scene units.
+  // receiverTargetPos is the fixed tower receiver position to aim at.
+  // All angles are radians. Elevation is clamped to 0–Math.PI / 2.
+  // APIs: setAzimuth(angle), setElevation(angle), setPose({ azimuth, elevation }).
+  // setPose accepts either angle. reset() restores 0 azimuth, Math.PI / 2 elevation.
+  // getCurrentAzimuth() and getCurrentElevation() read the current angles.
+  // sunData also has timeMinutes (solar clock), elapsedTime and deltaTime (seconds).
+  // Uncomment this example to update every mirror on each sun update.
   /*
   for (const mirror of mirrorList) {
-    mirror.setAzimuth(0);
-    mirror.setElevation(Math.PI / 2);
+    const azimuth = mirror.getCurrentAzimuth() + 0.03;
+    mirror.setAzimuth(azimuth);
+    mirror.setElevation(Math.sin(azimuth));
   }
   */
 }
@@ -16,7 +30,6 @@ const defaultWorker = () => new Worker(new URL('./sandbox.worker.js', import.met
 
 /** Reference worker lifecycle, adapted to bounded whole-field day playback. */
 export function createSimulationRunner(api, {
-  getDuration = () => 20,
   onStateChange = () => {},
   onError = () => {},
   onStart = () => {},
@@ -34,7 +47,6 @@ export function createSimulationRunner(api, {
   let watchdog;
   let elapsedTime = 0;
   let lastSentTime = 0;
-  let durationSeconds = 20;
   let finalFrame = false;
   let sunDirty = false;
   let updatingSun = false;
@@ -124,10 +136,6 @@ export function createSimulationRunner(api, {
         if (typeof source !== 'string' || source.length > SANDBOX_LIMITS.sourceLength) {
           throw new RangeError('Script must be at most ' + SANDBOX_LIMITS.sourceLength / 1024 + 'K characters.');
         }
-        durationSeconds = getDuration();
-        if (!Number.isFinite(durationSeconds) || durationSeconds < 3 || durationSeconds > 60) {
-          throw new RangeError('Day duration must be between 3 and 60 seconds.');
-        }
         const instance = createWorker();
         worker = instance;
         instance.onmessage = event => receive(instance, event.data);
@@ -151,19 +159,19 @@ export function createSimulationRunner(api, {
     tick(deltaTime) {
       if (!worker || !ready || !Number.isFinite(deltaTime) || deltaTime < 0) return;
       // Use visible elapsed seconds, so the duration remains meaningful at low FPS.
-      if (started) elapsedTime = Math.min(durationSeconds, elapsedTime + deltaTime);
+      if (started) elapsedTime = Math.min(DAY_DURATION_SECONDS, elapsedTime + deltaTime);
       // Never queue work behind slow code; the next callback sees the latest time.
       if (pendingId !== null) return;
       if (started && elapsedTime === lastSentTime && !sunDirty) return;
       const instance = worker;
       const day = api.getSolarDay();
-      finalFrame = started && elapsedTime >= durationSeconds;
+      finalFrame = started && elapsedTime >= DAY_DURATION_SECONDS;
       try {
         // Explicit manual sun edits get one callback before automatic playback resumes.
         if (!started || !sunDirty || finalFrame) {
           updatingSun = true;
           try {
-            api.setSunTime(day.sunrise + (day.sunset - day.sunrise) * (elapsedTime / durationSeconds));
+            api.setSunTime(day.sunrise + (day.sunset - day.sunrise) * (elapsedTime / DAY_DURATION_SECONDS));
           } finally { updatingSun = false; }
         }
         sunDirty = false;

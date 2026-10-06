@@ -96,22 +96,22 @@ export class Atmosphere {
 
     this.sunDirection = new THREE.Vector3();
     const initialSun = getSunPosition(CONFIG.sunTimeMinutes, getSolarDay(CONFIG.solarDay));
-    this.setDegrees(initialSun.azimuth, initialSun.altitude);
+    this.setDegrees(initialSun.azimuth, initialSun.elevation);
   }
 
-  /** Set the sun's azimuth and altitude in degrees. */
-  setDegrees(azimuth, altitude) {
-    if (!Number.isFinite(azimuth) || !Number.isFinite(altitude)) {
+  /** Set the sun's azimuth and elevation in degrees. */
+  setDegrees(azimuth, elevation) {
+    if (!Number.isFinite(azimuth) || !Number.isFinite(elevation)) {
       throw new TypeError('Sun angles must be finite.');
     }
 
     this.azimuth = azimuth;
-    this.altitude = clamp(altitude, -10, 89);
-    this.sunDirection.set(...sunDirection(this.azimuth, this.altitude));
+    this.elevation = clamp(elevation, -10, 89);
+    this.sunDirection.set(...sunDirection(this.azimuth, this.elevation));
 
-    const daylight = smoothstep(-7, 4, this.altitude);
-    const directLight = smoothstep(-0.4, 6, this.altitude);
-    const goldenHour = 1 - smoothstep(2, 21, this.altitude);
+    const daylight = smoothstep(-7, 4, this.elevation);
+    const directLight = smoothstep(-0.4, 6, this.elevation);
+    const goldenHour = 1 - smoothstep(2, 21, this.elevation);
     const skyUniforms = this.sky.material.uniforms;
     skyUniforms.sunDirection.value.copy(this.sunDirection);
     skyUniforms.day.value = daylight;
@@ -136,9 +136,9 @@ export class Atmosphere {
     return this;
   }
 
-  /** Set the sun's azimuth and altitude in radians. */
-  setSun({ azimuth, altitude }) {
-    return this.setDegrees(degrees(azimuth), degrees(altitude));
+  /** Set the sun's azimuth and elevation in radians. */
+  setSun({ azimuth, elevation }) {
+    return this.setDegrees(degrees(azimuth), degrees(elevation));
   }
 
   refreshEnvironment() {
@@ -188,7 +188,7 @@ export class Atmosphere {
       shadowHalfSize,
       ...snappedCenter.toArray().map((value) => value.toFixed(2)),
       this.azimuth,
-      this.altitude,
+      this.elevation,
     ].join(',');
     if (shadowKey === this.shadowKey) return false;
     this.shadowKey = shadowKey;

@@ -8,8 +8,8 @@ import RELEASE_SYNC from '@jitl/quickjs-wasmfile-release-sync';
 import { createMirrorSandbox } from '../src/editor/mirror-sandbox.js';
 import { SANDBOX_LIMITS, serializeSandboxError, validateConsoleEntries } from '../src/editor/sandbox-limits.js';
 
-const mirrors = [{ id: 'H-0001', pos: { x: 4, y: 2.66, z: 12 }, azimuth: 0, altitude: Math.PI / 2, elevation: Math.PI / 2 }];
-const sun = { azimuth: 0.4, elevation: 0.5, altitude: 0.5, timeMinutes: 400, elapsedTime: 0, deltaTime: 0.02 };
+const mirrors = [{ id: 'H-0001', pos: { x: 4, y: 2.66, z: 12 }, azimuth: 0, elevation: Math.PI / 2 }];
+const sun = { azimuth: 0.4, elevation: 0.5, timeMinutes: 400, elapsedTime: 0, deltaTime: 0.02 };
 const receiver = { x: 0, y: 84, z: 0 };
 const threeSource = readFileSync(createRequire(import.meta.url).resolve('three'), 'utf8');
 let quickJS;
@@ -22,8 +22,8 @@ async function makeSandbox(t, source, { snapshots = mirrors, limits = SANDBOX_LI
 
 test('the empty updateMirrors template runs and all inputs are guest copies', async t => {
   const sandbox = await makeSandbox(t, `function updateMirrors(mirrorList, sunData, receiverTargetPos) {
-    if (mirrorList[0].id !== "H-0001" || mirrorList[0].pos.y !== 2.66) throw new Error("Missing mirror pivot");
-    if (sunData.azimuth !== 0.4 || sunData.elevation !== 0.5 || sunData.altitude !== 0.5) throw new Error("Missing sun radians");
+    if (mirrorList[0].id !== "H-0001" || mirrorList[0].pos.y !== 2.66) throw new Error("Missing mirror position");
+    if (sunData.azimuth !== 0.4 || sunData.elevation !== 0.5 || "altitude" in sunData) throw new Error("Incorrect sun radians");
     if (receiverTargetPos.y !== 84) throw new Error("Missing receiver");
     sunData.elevation = -2;
     receiverTargetPos.y = -10;
@@ -67,27 +67,48 @@ test('a full field can use THREE vector reflection math and setPose for every mi
   assert.ok(commands.every(command => command.method === 'setPose' && Number.isFinite(command.pose.azimuth) && Number.isFinite(command.pose.elevation)));
 });
 
-test('all setters, elevation aliases, reset, and getters preserve command order', async t => {
+test('elevation setters, reset, and getters preserve command order without altitude aliases', async t => {
   const sandbox = await makeSandbox(t, `function updateMirrors(list) {
     const m = list[0];
     m.setAzimuth(0.2);
     if (m.getCurrentAzimuth() !== 0.2) throw new Error("Azimuth getter stale");
-    m.setAltitude(10);
-    if (m.getCurrentAltitude() !== Math.PI / 2) throw new Error("Altitude not clamped");
+    if ("altitude" in m || "setAltitude" in m || "getCurrentAltitude" in m) throw new Error("Altitude alias exposed");
+    m.setElevation(10);
+    if (m.getCurrentElevation() !== Math.PI / 2) throw new Error("Elevation not clamped");
     m.setElevation(-1);
     if (m.getCurrentElevation() !== 0) throw new Error("Elevation not clamped");
     m.setPose({ azimuth: 0.8, elevation: 0.6 });
-    if (m.azimuth !== 0.8 || m.altitude !== 0.6 || m.elevation !== 0.6) throw new Error("Pose getter stale");
+    if (m.azimuth !== 0.8 || m.elevation !== 0.6) throw new Error("Pose getter stale");
     m.reset();
-    if (m.azimuth !== 0 || m.altitude !== Math.PI / 2) throw new Error("Reset pose incorrect");
+    if (m.azimuth !== 0 || m.elevation !== Math.PI / 2) throw new Error("Reset pose incorrect");
   }`);
   assert.deepEqual(sandbox.tick(mirrors, sun, receiver), [
     { id: 'H-0001', method: 'setAzimuth', value: 0.2 },
-    { id: 'H-0001', method: 'setAltitude', value: 10 },
+    { id: 'H-0001', method: 'setElevation', value: 10 },
     { id: 'H-0001', method: 'setElevation', value: -1 },
     { id: 'H-0001', method: 'setPose', pose: { azimuth: 0.8, elevation: 0.6 } },
     { id: 'H-0001', method: 'reset' },
   ]);
+});
+
+test('the example increments azimuth by 0.03 and sets elevation to its sine each callback', async t => {
+  const sandbox = await makeSandbox(t, `function updateMirrors(mirrorList) {
+    for (const mirror of mirrorList) {
+      const azimuth = mirror.getCurrentAzimuth() + 0.03;
+      mirror.setAzimuth(azimuth);
+      mirror.setElevation(Math.sin(azimuth));
+    }
+  }`);
+  let snapshot = mirrors;
+  for (let i = 1; i <= 3; i++) {
+    const commands = sandbox.tick(snapshot, sun, receiver);
+    const azimuth = snapshot[0].azimuth + 0.03;
+    assert.deepEqual(commands, [
+      { id: 'H-0001', method: 'setAzimuth', value: azimuth },
+      { id: 'H-0001', method: 'setElevation', value: Math.sin(azimuth) },
+    ]);
+    snapshot = [{ ...snapshot[0], azimuth, elevation: Math.sin(azimuth) }];
+  }
 });
 
 test('script state and cached mirror references persist and refresh each callback', async t => {
@@ -205,9 +226,9 @@ test('the actual 65536 command quota stops a flood wholly inside the guest', asy
 });
 
 test('invalid angles, poses, callback types, and bad snapshots are rejected', async t => {
-  for (const expression of ['m.setAzimuth(NaN)', 'm.setAltitude(Infinity)', 'm.setElevation("1")', 'm.setPose(null)', 'm.setPose([])', 'm.setPose({altitude:0.3,elevation:0.4})']) {
+  for (const expression of ['m.setAzimuth(NaN)', 'm.setElevation(Infinity)', 'm.setElevation("1")', 'm.setPose(null)', 'm.setPose([])', 'm.setPose({altitude:0.3})', 'm.setPose({altitude:0.3,elevation:0.4})']) {
     const sandbox = await makeSandbox(t, 'function updateMirrors(list) { const m = list[0]; ' + expression + '; }');
-    assert.throws(() => sandbox.tick(mirrors, sun, receiver), /finite|pose|agree/);
+    assert.throws(() => sandbox.tick(mirrors, sun, receiver), /finite|pose|altitude is not supported/);
   }
   for (const source of ['function* updateMirrors() {}', 'async function* updateMirrors() {}', 'const updateMirrors = 7']) {
     await assert.rejects(makeSandbox(t, source), /Define function|not a generator/);
@@ -215,7 +236,9 @@ test('invalid angles, poses, callback types, and bad snapshots are rejected', as
   const sandbox = await makeSandbox(t, 'function updateMirrors() {}');
   assert.throws(() => sandbox.tick([mirrors[0], mirrors[0]], sun, receiver), /unique/);
   assert.throws(() => sandbox.tick([{ ...mirrors[0], azimuth: NaN }], sun, receiver), /finite/);
+  assert.throws(() => sandbox.tick([{ id: 'H-0001', pos: mirrors[0].pos, azimuth: 0, altitude: 0.2 }], sun, receiver), /finite/);
   assert.throws(() => sandbox.tick(mirrors, { elevation: 0.2 }, receiver), /Sun angles/);
+  assert.throws(() => sandbox.tick(mirrors, { azimuth: 0.4, altitude: 0.5 }, receiver), /Sun angles/);
 });
 
 test('promise failures and command/job quotas discard the entire callback', async t => {

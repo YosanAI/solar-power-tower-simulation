@@ -16,8 +16,12 @@ test('every mirror starts facing up with finite, nonzero glazing transforms', ()
     assert.ok(field.rigs.length > 0);
     for (const rig of field.rigs) {
       assert.equal(rig.azimuth, 0, `${rig.id} azimuth`);
-      assert.equal(rig.altitude, Math.PI / 2, `${rig.id} altitude`);
-      for (const pivot of [rig.root, rig.azimuthPivot, rig.altitudePivot]) {
+      assert.equal(rig.elevation, Math.PI / 2, `${rig.id} elevation`);
+      assert.deepEqual(rig.initialPose, { azimuth: 0, elevation: Math.PI / 2 });
+      for (const removed of ['altitude', 'altitudePivot', 'setAltitude', 'getCurrentAltitude']) {
+        assert.equal(removed in rig, false, `${rig.id} ${removed} removed`);
+      }
+      for (const pivot of [rig.root, rig.azimuthPivot, rig.elevationPivot]) {
         assert.ok(pivot.matrixWorld.elements.every(Number.isFinite), `${rig.id} transform`);
       }
       const normal = rig.getNormal();
@@ -45,11 +49,11 @@ test('every mirror starts facing up with finite, nonzero glazing transforms', ()
 
 test('reset restores the upward pose after manual rig adjustments', () => {
   const rig = new HeliostatRig({ ...createFieldLayout().positions[0], index: 0 });
-  rig.setPose({ azimuth: -0.75, altitude: 0.25 });
+  rig.setPose({ azimuth: -0.75, elevation: 0.25 });
   assert.equal(rig.azimuth, -0.75);
-  assert.equal(rig.altitude, 0.25);
+  assert.equal(rig.elevation, 0.25);
   rig.reset();
   assert.equal(rig.azimuth, 0);
-  assert.equal(rig.altitude, Math.PI / 2);
-  assert.ok(rig.altitudePivot.matrixWorld.elements.every(Number.isFinite));
+  assert.equal(rig.elevation, Math.PI / 2);
+  assert.ok(rig.elevationPivot.matrixWorld.elements.every(Number.isFinite));
 });

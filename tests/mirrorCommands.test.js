@@ -42,16 +42,16 @@ test('command validation preserves per-mirror command order without mutating rig
     { id: 'A', method: 'setElevation', value: 0.6 },
     { id: 'A', method: 'setPose', pose: { azimuth: 0.7 } },
   ], [rig]);
-  assert.deepEqual(staged.get(rig), { azimuth: 0.7, altitude: 0.6 });
+  assert.deepEqual(staged.get(rig), { azimuth: 0.7, elevation: 0.6 });
   assert.equal(rig.azimuth, 0);
-  assert.equal(rig.altitude, Math.PI / 2);
+  assert.equal(rig.elevation, Math.PI / 2);
 
   const reset = validateMirrorCommands([
     { id: 'A', method: 'setPose', pose: { azimuth: -0.3, elevation: 0.3 } },
     { id: 'A', method: 'reset' },
-    { id: 'A', method: 'setAltitude', value: -1 },
+    { id: 'A', method: 'setElevation', value: -1 },
   ], [rig]);
-  assert.deepEqual(reset.get(rig), { azimuth: 0, altitude: 0 });
+  assert.deepEqual(reset.get(rig), { azimuth: 0, elevation: 0 });
 });
 
 test('batch updates thousands of mirrors with one buffer upload and invalidation', () => {
@@ -71,7 +71,7 @@ test('batch updates thousands of mirrors with one buffer upload and invalidation
     assert.equal(uploads, 1);
     for (let index = 0; index < field.rigs.length; index += 1) {
       assert.equal(field.rigs[index].azimuth, index / 1000);
-      assert.equal(field.rigs[index].altitude, Math.PI / 4);
+      assert.equal(field.rigs[index].elevation, Math.PI / 4);
     }
     assertFiniteBatches(field);
 
@@ -95,10 +95,14 @@ test('any invalid command rejects the complete callback without a partial update
       { id: rig.id, method: 'turn', value: 0.5 },
       { id: rig.id, method: 'setAzimuth', value: NaN },
       { id: rig.id, method: 'setAzimuth', value: Infinity },
-      { id: rig.id, method: 'setAltitude', value: '0.5' },
+      { id: rig.id, method: 'setAltitude', value: 0.5 },
+      { id: rig.id, method: 'setElevation', value: '0.5' },
       { id: rig.id, method: 'setElevation' },
       { id: rig.id, method: 'setPose', pose: { azimuth: 0.6, elevation: NaN } },
       { id: rig.id, method: 'setPose', pose: { altitude: 0.4, elevation: 0.5 } },
+      { id: rig.id, method: 'setPose', pose: { altitude: 0.4, elevation: 0.4 } },
+      { id: rig.id, method: 'setPose', pose: { altitude: 0.4 } },
+      { id: rig.id, method: 'setPose', pose: { altitude: undefined } },
       { id: rig.id, method: 'setPose', pose: null },
       { id: rig.id, method: 'setPose' },
       null,
@@ -112,7 +116,7 @@ test('any invalid command rejects the complete callback without a partial update
         bad,
       ]));
       assert.equal(rig.azimuth, 0);
-      assert.equal(rig.altitude, Math.PI / 2);
+      assert.equal(rig.elevation, Math.PI / 2);
     }
     assert.equal(invalidations, 0);
     field.sectors.forEach((sector, sectorIndex) => {
@@ -133,6 +137,7 @@ test('editor positions are rotation-axis intersections, independent of panel pos
   try {
     const rig = field.rigs[0];
     const initial = field.getMirrorSnapshots()[0];
+    assert.deepEqual(Object.keys(initial).sort(), ['azimuth', 'elevation', 'id', 'pos']);
     assert.equal(initial.pos.x, rig.root.position.x);
     assert.equal(initial.pos.z, rig.root.position.z);
     assert.ok(Math.abs(initial.pos.y - 2.66) < 1e-12);
@@ -140,7 +145,7 @@ test('editor positions are rotation-axis intersections, independent of panel pos
     const changed = field.getMirrorSnapshots()[0];
     assert.deepEqual(changed.pos, initial.pos);
     assert.equal(changed.azimuth, 1.1);
-    assert.equal(changed.altitude, 0.3);
+    assert.equal('altitude' in changed, false);
     assert.equal(changed.elevation, 0.3);
     assert.ok(rig.getMirrorCenter().distanceTo(rig.getRotationCenter()) > 0.2);
 
@@ -159,10 +164,22 @@ test('editor positions are rotation-axis intersections, independent of panel pos
 test('individual mirror setters accept elevation and reject invalid angles atomically', () => {
   const rig = new HeliostatRig({ id: 'A', index: 0, sector: 0, x: 0, z: 0 });
   rig.setPose({ azimuth: 0.2, elevation: 0.4 });
-  assert.equal(rig.altitude, 0.4);
+  assert.equal(rig.elevation, 0.4);
   for (const bad of [NaN, Infinity, '0.2', null]) {
-    assert.throws(() => rig.setPose({ azimuth: 0.9, altitude: bad }));
+    assert.throws(() => rig.setPose({ azimuth: 0.9, elevation: bad }));
     assert.equal(rig.azimuth, 0.2);
-    assert.equal(rig.altitude, 0.4);
+    assert.equal(rig.elevation, 0.4);
   }
+  for (const pose of [
+    { azimuth: 0.9, altitude: 0.4 },
+    { azimuth: 0.9, altitude: 0.4, elevation: 0.4 },
+    { azimuth: 0.9, altitude: undefined },
+  ]) {
+    assert.throws(() => rig.setPose(pose), /use elevation/);
+    assert.equal(rig.azimuth, 0.2);
+    assert.equal(rig.elevation, 0.4);
+  }
+  assert.equal(rig.setElevation(0.8), rig);
+  assert.equal(rig.elevation, 0.8);
+  assert.equal(rig.azimuth, 0.2);
 });

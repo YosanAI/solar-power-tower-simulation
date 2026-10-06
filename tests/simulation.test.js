@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Worker } from 'node:worker_threads';
-import { DEFAULT_CODE, createSimulationRunner } from '../src/editor/simulation.js';
+import { DAY_DURATION_SECONDS, DEFAULT_CODE, createSimulationRunner } from '../src/editor/simulation.js';
 import { SANDBOX_LIMITS } from '../src/editor/sandbox-limits.js';
 import { validateMirrorCommands } from '../src/app/mirrorCommands.js';
 
@@ -18,8 +18,8 @@ function createHarness(t, { realWorker = false, mirrorCount = 2, ...overrides } 
     id: `H-${index}`,
     pos: { x: index, y: 2.66, z: -100 - index },
     azimuth: 0,
-    altitude: Math.PI / 2,
-    initialPose: { azimuth: 0, altitude: Math.PI / 2 },
+    elevation: Math.PI / 2,
+    initialPose: { azimuth: 0, elevation: Math.PI / 2 },
   }));
   const byId = new Map(rigs.map((rig) => [rig.id, rig]));
   const commands = [];
@@ -31,11 +31,11 @@ function createHarness(t, { realWorker = false, mirrorCount = 2, ...overrides } 
   const threads = [];
   const events = [];
   let starts = 0;
-  let sun = { azimuth: 0.9, elevation: 0.4, altitude: 0.4, timeMinutes: 600 };
+  let sun = { azimuth: 0.9, elevation: 0.4, timeMinutes: 600 };
   const api = {
     getMirrorSnapshots: () => rigs.map((rig) => ({
       id: rig.id, pos: { ...rig.pos }, azimuth: rig.azimuth,
-      altitude: rig.altitude, elevation: rig.altitude,
+      elevation: rig.elevation,
     })),
     applyMirrorCommands(batch) {
       const staged = validateMirrorCommands(batch, byId);
@@ -50,7 +50,6 @@ function createHarness(t, { realWorker = false, mirrorCount = 2, ...overrides } 
       sun = {
         azimuth: progress * Math.PI,
         elevation: Math.sin(progress * Math.PI),
-        altitude: Math.sin(progress * Math.PI),
         timeMinutes: minutes,
       };
       // Match the system callback dispatched by programmatic sun updates.
@@ -119,6 +118,31 @@ function createHarness(t, { realWorker = false, mirrorCount = 2, ...overrides } 
   };
 }
 
+test('the documented JavaScript starter compiles and its example increments azimuth with sine elevation', async (t) => {
+  const h = createHarness(t, { realWorker: true });
+  assert.match(DEFAULT_CODE, /mirrorList \/\* Array<Mirror> \*\//);
+  assert.match(DEFAULT_CODE, /receiverTargetPos \/\* \{ x: number, y: number, z: number \} \*\//);
+  assert.doesNotMatch(DEFAULT_CODE, /altitude|round|rotation.axis/i);
+  assert.equal(await h.run(DEFAULT_CODE), true);
+  await h.step(0);
+  assert.deepEqual(h.commands, [[]], 'the example remains opt-in');
+  assert.deepEqual(h.rigs.map((rig) => rig.azimuth), [0, 0]);
+
+  const example = DEFAULT_CODE.replace('  /*\n', '').replace('  */\n', '');
+  assert.equal(await h.run(example), true);
+  await h.step(0);
+  for (const mirror of h.rigs) {
+    assert.equal(mirror.azimuth, 0.03);
+    assert.equal(mirror.elevation, Math.sin(0.03));
+  }
+  await h.step(0.1);
+  for (const mirror of h.rigs) {
+    assert.equal(mirror.azimuth, 0.06);
+    assert.equal(mirror.elevation, Math.sin(0.06));
+  }
+  assert.deepEqual(h.errors, []);
+});
+
 test('compilation does not move the sun and the first successful callback starts at sunrise', (t) => {
   const h = createHarness(t);
   h.runner.tick(1);
@@ -146,28 +170,27 @@ test('compilation does not move the sun and the first successful callback starts
   assert.deepEqual(h.errors, []);
 });
 
-test('day duration is captured each Run and sunset commands apply before completion', (t) => {
-  let duration = 3;
-  const h = createHarness(t, { getDuration: () => duration });
+test('every Run lasts exactly 12 seconds and sunset commands apply before completion', (t) => {
+  assert.equal(DAY_DURATION_SECONDS, 12);
+  const h = createHarness(t);
   h.runner.run(DEFAULT_CODE);
   h.ready();
   h.runner.tick(0.1);
   h.respond();
-  duration = 60;
-  h.runner.tick(1.5);
+  h.runner.tick(6);
   assert.equal(h.workers[0].messages.at(-1).sunData.timeMinutes, 720);
   h.respond();
   h.runner.tick(10);
   const final = h.workers[0].messages.at(-1);
   assert.equal(final.sunData.timeMinutes, 1080);
-  assert.equal(final.sunData.elapsedTime, 3);
-  assert.equal(final.sunData.deltaTime, 1.5);
+  assert.equal(final.sunData.elapsedTime, 12);
+  assert.equal(final.sunData.deltaTime, 6);
   assert.equal(h.runner.isRunning(), true, 'sunset response is still pending');
   h.respond([{ id: 'H-0', method: 'setPose', pose: { azimuth: 0.6, elevation: 0.7 } }]);
   assert.equal(h.rigs[0].azimuth, 0.6);
-  assert.equal(h.rigs[0].altitude, 0.7);
+  assert.equal(h.rigs[0].elevation, 0.7);
   assert.equal(h.runner.isRunning(), false);
-  assert.equal(h.runner.getTime(), 3);
+  assert.equal(h.runner.getTime(), 12);
   assert.deepEqual(h.events.slice(-3), ['apply', 'terminate', 'complete']);
   h.runner.tick(2);
   assert.equal(h.commands.length, 3);
@@ -176,13 +199,13 @@ test('day duration is captured each Run and sunset commands apply before complet
   h.ready();
   h.runner.tick(1);
   h.respond();
-  h.runner.tick(30);
+  h.runner.tick(6);
   assert.equal(h.workers[1].messages.at(-1).sunData.timeMinutes, 720);
-  assert.equal(h.runner.getTime(), 30);
+  assert.equal(h.runner.getTime(), 6);
 });
 
 test('slow callbacks have backpressure and the next callback sees accumulated visible time', (t) => {
-  const h = createHarness(t, { getDuration: () => 10 });
+  const h = createHarness(t);
   h.runner.run(DEFAULT_CODE);
   h.ready();
   h.runner.tick(0.01);
@@ -197,30 +220,30 @@ test('slow callbacks have backpressure and the next callback sees accumulated vi
   const next = h.workers[0].messages.at(-1);
   assert.ok(Math.abs(next.sunData.elapsedTime - 1) < 1e-12);
   assert.ok(Math.abs(next.sunData.deltaTime - 0.8) < 1e-12);
-  assert.equal(next.sunData.timeMinutes, 432);
+  assert.equal(next.sunData.timeMinutes, 420);
   h.respond();
   h.runner.tick(0);
   assert.equal(h.workers[0].messages.length, 4, 'zero time without a sun change executes no extra code');
 });
 
 test('manual sun changes receive one current-sun callback before playback resumes', (t) => {
-  const h = createHarness(t, { getDuration: () => 10 });
+  const h = createHarness(t);
   h.runner.run(DEFAULT_CODE);
   h.ready();
   h.runner.tick(0);
   h.respond();
   h.runner.tick(1);
   h.respond();
-  h.manualSun({ azimuth: 0.55, elevation: 0.44, altitude: 0.44, timeMinutes: 555 });
+  h.manualSun({ azimuth: 0.55, elevation: 0.44, timeMinutes: 555 });
   h.runner.tick(0);
   const manual = h.workers[0].messages.at(-1);
   assert.equal(manual.sunData.azimuth, 0.55);
   assert.equal(manual.sunData.elevation, 0.44);
   assert.equal(manual.sunData.timeMinutes, 555);
-  assert.deepEqual(h.sunTimes, [360, 432], 'manual callback must not overwrite the edited sun');
+  assert.deepEqual(h.sunTimes, [360, 420], 'manual callback must not overwrite the edited sun');
   h.respond();
   h.runner.tick(1);
-  assert.equal(h.workers[0].messages.at(-1).sunData.timeMinutes, 504);
+  assert.equal(h.workers[0].messages.at(-1).sunData.timeMinutes, 480);
   assert.equal(h.runner.getTime(), 2);
 });
 
@@ -270,13 +293,8 @@ test('invalid whole-field responses leave all mirrors unchanged and prevent onSt
 });
 
 test('invalid inputs, startup failures, and cancellation cannot start playback', (t) => {
-  let duration = 2;
-  const h = createHarness(t, { getDuration: () => duration });
-  for (const badDuration of [2, 61, NaN, '20']) {
-    duration = badDuration;
-    assert.equal(h.runner.run(DEFAULT_CODE), false);
-  }
-  duration = 20;
+  const h = createHarness(t);
+  assert.equal(h.runner.run(null), false);
   assert.equal(h.runner.run(' '.repeat(SANDBOX_LIMITS.sourceLength + 1)), false);
   assert.equal(h.workers.length, 0);
   h.runner.run(DEFAULT_CODE);
@@ -315,7 +333,7 @@ test('startup and response watchdogs terminate unresponsive workers without star
 });
 
 test('a real 2045-mirror worker retains THREE state, refreshes inputs, and resets on Run', async (t) => {
-  const h = createHarness(t, { realWorker: true, mirrorCount: 2045, getDuration: () => 3 });
+  const h = createHarness(t, { realWorker: true, mirrorCount: 2045 });
   const source = `
     const direction = new THREE.Vector3();
     const receiver = new THREE.Vector3();
@@ -342,11 +360,11 @@ test('a real 2045-mirror worker retains THREE state, refreshes inputs, and reset
   assert.equal(h.rigs[2044].azimuth, 0.01 + 2044 / 10000);
   assert.equal(h.starts, 1);
   assert.equal(h.runner.getTime(), 0);
-  await h.step(1.5);
+  await h.step(6);
   assert.equal(h.rigs[0].azimuth, Math.PI / 2 + 0.02);
   assert.equal(h.logs[0].message, '1 2045 1 0 0');
-  assert.match(h.logs[1].message, /^2 2045 .* 1.5 1.5$/);
-  await h.step(1.5);
+  assert.match(h.logs[1].message, /^2 2045 .* 6 6$/);
+  await h.step(6);
   assert.equal(h.rigs[0].azimuth, Math.PI + 0.03);
   assert.equal(h.runner.isRunning(), false);
   assert.equal(h.phases.at(-1), 'complete');

@@ -315,16 +315,16 @@ export class HeliostatRig {
     this.azimuthPivot = new THREE.Group();
     this.azimuthPivot.name = 'AzimuthPivot';
     this.azimuthPivot.position.y = CONFIG.azimuthAxisHeight;
-    this.altitudePivot = new THREE.Group();
-    this.altitudePivot.name = 'AltitudePivot';
-    this.altitudePivot.position.y = CONFIG.elevationAxisOffset;
+    this.elevationPivot = new THREE.Group();
+    this.elevationPivot.name = 'ElevationPivot';
+    this.elevationPivot.position.y = CONFIG.elevationAxisOffset;
     this.root.add(this.azimuthPivot);
-    this.azimuthPivot.add(this.altitudePivot);
+    this.azimuthPivot.add(this.elevationPivot);
 
     this.onChange = onChange;
     this.initialPose = initialMirrorPose();
     this.azimuth = this.initialPose.azimuth;
-    this.altitude = this.initialPose.altitude;
+    this.elevation = this.initialPose.elevation;
     this.root.userData = {
       id: this.id,
       kind: 'dual-pane-heliostat',
@@ -340,18 +340,14 @@ export class HeliostatRig {
     return this.setPose({ azimuth: radians });
   }
 
-  setAltitude(radians) {
-    return this.setPose({ altitude: radians });
-  }
-
   setElevation(radians) {
-    return this.setAltitude(radians);
+    return this.setPose({ elevation: radians });
   }
 
   setPose(pose = {}) {
-    const { azimuth, altitude } = normalizeMirrorPose(this, pose);
+    const { azimuth, elevation } = normalizeMirrorPose(this, pose);
     this.azimuth = azimuth;
-    this.altitude = altitude;
+    this.elevation = elevation;
     return this.commit();
   }
 
@@ -361,7 +357,7 @@ export class HeliostatRig {
 
   commit(notify = true) {
     this.azimuthPivot.rotation.y = this.azimuth;
-    this.altitudePivot.rotation.x = -this.altitude;
+    this.elevationPivot.rotation.x = -this.elevation;
     this.root.updateMatrixWorld(true);
     if (notify) this.onChange?.(this);
     return this;
@@ -370,18 +366,18 @@ export class HeliostatRig {
   getNormal(target = new THREE.Vector3()) {
     return target
       .set(0, 0, 1)
-      .transformDirection(this.altitudePivot.matrixWorld);
+      .transformDirection(this.elevationPivot.matrixWorld);
   }
 
   getMirrorCenter(target = new THREE.Vector3()) {
     return target
       .set(0, 0, CONFIG.mirrorFront)
-      .applyMatrix4(this.altitudePivot.matrixWorld);
+      .applyMatrix4(this.elevationPivot.matrixWorld);
   }
 
   /** World position where the azimuth and elevation rotation axes meet. */
   getRotationCenter(target = new THREE.Vector3()) {
-    return this.altitudePivot.getWorldPosition(target);
+    return this.elevationPivot.getWorldPosition(target);
   }
 }
 
@@ -460,7 +456,7 @@ export class HeliostatField {
     return {
       fixed: rig.root.matrixWorld,
       yaw: rig.azimuthPivot.matrixWorld,
-      pitch: rig.altitudePivot.matrixWorld,
+      pitch: rig.elevationPivot.matrixWorld,
     };
   }
 
@@ -561,8 +557,7 @@ export class HeliostatField {
         id: rig.id,
         pos: { x: center.x, y: center.y, z: center.z },
         azimuth: rig.azimuth,
-        altitude: rig.altitude,
-        elevation: rig.altitude,
+        elevation: rig.elevation,
       };
     });
   }
@@ -572,9 +567,9 @@ export class HeliostatField {
     const poses = validateMirrorCommands(commands, this.byId);
     let updatedCount = 0;
     for (const [rig, pose] of poses) {
-      if (rig.azimuth === pose.azimuth && rig.altitude === pose.altitude) continue;
+      if (rig.azimuth === pose.azimuth && rig.elevation === pose.elevation) continue;
       rig.azimuth = pose.azimuth;
-      rig.altitude = pose.altitude;
+      rig.elevation = pose.elevation;
       rig.commit(false);
       this.updateRig(rig, false);
       updatedCount += 1;

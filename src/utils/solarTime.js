@@ -3,8 +3,8 @@ import { clamp } from './math.js';
 
 const MINUTE_MS = 60 * 1000;
 const SOLAR_NOON = 12 * 60;
-const MINIMUM_ALTITUDE = -10;
-const MAXIMUM_ALTITUDE = 89;
+const MINIMUM_ELEVATION = -10;
+const MAXIMUM_ELEVATION = 89;
 
 function atSolarMinute(minutes, { originTime }) {
   return new Date(originTime + minutes * MINUTE_MS);
@@ -12,14 +12,14 @@ function atSolarMinute(minutes, { originTime }) {
 
 /** Convert SunCalc 2's north-based degrees to the scene's south-based degrees. */
 export function getSunPosition(minutes, day) {
-  const { azimuth, altitude } = SunCalc.getPosition(
+  const { azimuth, altitude: elevation } = SunCalc.getPosition(
     atSolarMinute(minutes, day),
     day.latitude,
     day.longitude,
   );
   return {
     azimuth: azimuth - 180, // +Z south; negative azimuth in the morning.
-    altitude: clamp(altitude, MINIMUM_ALTITUDE, MAXIMUM_ALTITUDE),
+    elevation: clamp(elevation, MINIMUM_ELEVATION, MAXIMUM_ELEVATION),
   };
 }
 
@@ -51,11 +51,11 @@ export function getSolarDay({ date, latitude, longitude, marginMinutes }) {
   let end = Math.floor(Math.min(1439, day.sunset + marginMinutes));
 
   // Keep the requested margins within the renderer's limit using SunCalc itself.
-  const altitudeAt = (minutes) => SunCalc.getPosition(
+  const elevationAt = (minutes) => SunCalc.getPosition(
     atSolarMinute(minutes, day), latitude, longitude,
   ).altitude;
-  while (start < day.sunrise && altitudeAt(start) < MINIMUM_ALTITUDE) start += 1;
-  while (end > day.sunset && altitudeAt(end) < MINIMUM_ALTITUDE) end -= 1;
+  while (start < day.sunrise && elevationAt(start) < MINIMUM_ELEVATION) start += 1;
+  while (end > day.sunset && elevationAt(end) < MINIMUM_ELEVATION) end -= 1;
 
   return { ...day, start, end };
 }

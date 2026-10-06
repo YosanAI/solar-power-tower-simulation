@@ -12,46 +12,7 @@
   </head>
   <body>
     <main id="viewport" aria-label="Solar power tower scene"></main>
-    <aside id="scene-controls" aria-label="Day simulation settings"></aside>
-    <div id="sun-controls" aria-label="Sun position">
-      <label for="sun-time"
-        ><span>Time of day</span><output id="time-value" for="sun-time">10:00</output></label
-      >
-      <input
-        id="sun-time"
-        type="range"
-        min="327"
-        max="1114"
-        step="1"
-        value="600"
-        aria-describedby="sun-daylight sun-day-context"
-      />
-      <div id="sun-daylight" class="sun-time-note"></div>
-      <div id="sun-day-context" class="sun-time-note"></div>
-      <label for="sun-azimuth"
-        ><span>Sun azimuth</span><output id="azimuth-value" for="sun-azimuth">−45.1°</output></label
-      >
-      <input
-        id="sun-azimuth"
-        type="range"
-        min="-180"
-        max="180"
-        step="0.1"
-        value="-45.1"
-      />
-      <label for="sun-altitude"
-        ><span>Sun altitude</span
-        ><output id="altitude-value" for="sun-altitude">45.1°</output></label
-      >
-      <input
-        id="sun-altitude"
-        type="range"
-        min="-10"
-        max="89"
-        step="0.1"
-        value="45.1"
-      />
-    </div>
+    <aside id="scene-controls" aria-label="Scene settings"></aside>
     <section id="script-panel" class="script-panel" aria-labelledby="script-title" data-running="false" data-collapsed="false">
       <button id="resize-editor" class="script-resize" type="button" aria-label="Resize editor" title="Drag to resize; arrow keys adjust size">
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 12 8-8M4 8v4h4M8 4h4v4"/></svg>
@@ -71,7 +32,7 @@
       <div id="script-body" class="script-body">
         <div id="code-editor"></div>
         <div class="script-reference">
-          <span>Angles: radians · pos: world center of the rotation axes</span>
+          <span>Angles: radians · mirror.pos: { x, y, z }</span>
           <code class="script-reference-data">mirrorList: [{ id, pos: { x, y, z }, … }]</code>
           <code>mirror.setPose({ azimuth, elevation }) · setAzimuth(rad) · setElevation(rad)</code>
           <code class="script-reference-data">sunData: { azimuth, elevation } · receiverTargetPos: { x, y, z }</code>

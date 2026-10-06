@@ -9,24 +9,20 @@ import './editor.css';
 
 const MIRROR_COMPLETIONS = [
   { label: 'id', type: 'property', info: 'Stable mirror ID.' },
-  { label: 'pos', type: 'property', info: 'World position { x, y, z } at the intersection of the rotation axes.' },
+  { label: 'pos', type: 'property', info: 'Mirror position: { x: number, y: number, z: number }.' },
   { label: 'azimuth', type: 'property', info: 'Current azimuth in radians.' },
   { label: 'elevation', type: 'property', info: 'Current elevation in radians.' },
-  { label: 'altitude', type: 'property', info: 'Alias for elevation, in radians.' },
-  { label: 'setPose', type: 'method', info: 'setPose({ azimuth, elevation }) updates both angles in radians. altitude is an elevation alias.' },
+  { label: 'setPose', type: 'method', info: 'setPose({ azimuth, elevation }) sets either or both angles in radians.' },
   { label: 'setAzimuth', type: 'method', info: 'setAzimuth(radians)' },
   { label: 'setElevation', type: 'method', info: 'setElevation(radians), clamped to 0–Math.PI / 2.' },
-  { label: 'setAltitude', type: 'method', info: 'Alias for setElevation(radians).' },
   { label: 'getCurrentAzimuth', type: 'method', info: 'Returns the current azimuth in radians.' },
   { label: 'getCurrentElevation', type: 'method', info: 'Returns the current elevation in radians.' },
-  { label: 'getCurrentAltitude', type: 'method', info: 'Returns the current elevation in radians.' },
   { label: 'reset', type: 'method', info: 'Restore azimuth 0 and elevation Math.PI / 2.' },
 ];
 
 const SUN_COMPLETIONS = [
   ['azimuth', 'Sun azimuth in radians, following the scene coordinate convention.'],
   ['elevation', 'Sun elevation above the horizon in radians.'],
-  ['altitude', 'Alias for sun elevation, in radians.'],
   ['timeMinutes', 'Current time of day in local solar minutes.'],
   ['elapsedTime', 'Elapsed simulation seconds for this run.'],
   ['deltaTime', 'Simulation seconds since the previous callback.'],
@@ -54,7 +50,7 @@ export function mirrorCompletionSource(context) {
   return { from: context.pos - match[2].length, options, validFor: /^[\w$]*$/ };
 }
 
-export function createCodeEditor({ api, getDuration, onStart, onStop }) {
+export function createCodeEditor({ api, onStart, onStop }) {
   const panel = document.getElementById('script-panel');
   const toggleButton = document.getElementById('toggle-script');
   const status = document.getElementById('script-status');
@@ -66,7 +62,6 @@ export function createCodeEditor({ api, getDuration, onStart, onStop }) {
   }
 
   const runner = createSimulationRunner(api, {
-    getDuration,
     onStart,
     onStop,
     onStateChange(running, phase) {
@@ -92,8 +87,9 @@ export function createCodeEditor({ api, getDuration, onStart, onStop }) {
       basicSetup,
       javascript(),
       oneDark,
+      EditorView.lineWrapping,
       javascriptLanguage.data.of({ autocomplete: scopeCompletionSource({
-        mirrorList: [{ id: '', pos: { x: 0, y: 0, z: 0 }, ...mirrorApi }],
+        mirrorList: [{ id: '', pos: { x: 0, y: 0, z: 0 }, azimuth: 0, elevation: Math.PI / 2, ...mirrorApi }],
         sunData: Object.fromEntries(SUN_COMPLETIONS.map(option => [option.label, 0])),
         receiverTargetPos: { x: 0, y: 0, z: 0 },
         Math, THREE, console: Object.fromEntries(CONSOLE_METHODS.map(name => [name, () => {}])),

@@ -1,11 +1,9 @@
 import './style.css';
 import { createSolarScene } from './app/createSolarScene.js';
-import { bindSunControls } from './app/sunControls.js';
 import { createCodeEditor } from './editor/code-editor.js';
 import { createSceneGui } from './app/sceneGui.js';
 
 const loadingMessage = document.getElementById('loading');
-let sunControls;
 let solarScene;
 let codeEditor;
 let sceneGui;
@@ -26,25 +24,20 @@ try {
       window.solarSceneReady = true;
     },
     onError: showBootError,
-    onSunChange(azimuth, altitude, timeMinutes) {
-      sunControls?.sync(azimuth, altitude, timeMinutes);
+    onSunChange() {
+      sceneGui?.sync();
       codeEditor?.sunChanged();
     },
-    onFrame(deltaTime) { codeEditor?.tick(deltaTime); },
+    onFrame(deltaTime) { codeEditor?.tick(deltaTime); sceneGui?.sync(); },
     onDispose() {
       codeEditor?.destroy();
       sceneGui?.destroy();
-      sunControls?.dispose();
       window.solarSceneReady = false;
       window.solarReflectionsReady = false;
     },
   });
-  sunControls = bindSunControls((azimuth, altitude, timeMinutes) => {
-    if (Number.isFinite(timeMinutes)) solarScene.setSunTime(timeMinutes);
-    else solarScene.setSunDegrees(azimuth, altitude);
-  });
-  sceneGui = createSceneGui();
-  codeEditor = createCodeEditor({ api: solarScene, getDuration: sceneGui.getDuration });
+  sceneGui = createSceneGui({ api: solarScene });
+  codeEditor = createCodeEditor({ api: solarScene });
   window.solarScene = solarScene;
   window.mirrorEditor = codeEditor;
 } catch (error) {
