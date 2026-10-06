@@ -29,6 +29,7 @@ export function createSimulationRunner(api, {
   onError = () => {},
   onStart = () => {},
   onStop = () => {},
+  onComplete = () => {},
   onLog = entry => console[entry.level]('[updateMirrors]', entry.message),
   createWorker = defaultWorker,
   startupTimeoutMs = SANDBOX_LIMITS.startupMs,
@@ -62,8 +63,10 @@ export function createSimulationRunner(api, {
     pendingId = null;
     sunDirty = false;
     api.endYieldRun?.();
+    const result = phase === 'complete' ? api.getYieldState?.() : undefined;
     onStop();
     onStateChange(false, phase);
+    if (phase === 'complete') onComplete(result);
   }
 
   function fail(error) {

@@ -46,6 +46,46 @@
         <output id="script-status" class="script-status" role="status" aria-live="polite">Preparing scene…</output>
       </div>
     </section>
+    <dialog id="run-results" aria-labelledby="results-title" aria-describedby="results-description">
+      <button id="close-results" class="results-close" type="button" aria-label="Close results" autofocus>×</button>
+      <header class="results-header">
+        <p class="results-eyebrow">Run results</p>
+        <h2 id="results-title">Day complete</h2>
+        <p id="results-description">Your sunrise-to-sunset performance.</p>
+      </header>
+      <p id="result-record" class="results-record" hidden><span aria-hidden="true">✦</span> New high score</p>
+      <div class="results-primary">
+        <section class="result-energy-card" aria-labelledby="result-energy-label">
+          <h3 id="result-energy-label">Energy score</h3>
+          <p class="result-energy-value"><span id="result-energy">0.000</span> <span class="result-unit">MWh</span></p>
+          <p class="result-caption">Thermal energy captured</p>
+        </section>
+        <section class="result-efficiency-card" aria-labelledby="result-efficiency-label">
+          <h3 id="result-efficiency-label">Tracking efficiency</h3>
+          <p class="result-efficiency-value"><span id="result-efficiency">0.0</span><span class="result-unit">%</span></p>
+          <p class="result-caption">Ideal tracking: <span id="result-ideal-energy">0.000</span> MWh</p>
+        </section>
+      </div>
+      <div class="results-rating" title="Stars by displayed efficiency: 1 for captured energy, 2 at 25%, 3 at 50%, 4 at 75%, 5 at 90%.">
+        <div id="result-stars" role="img" aria-label="0 out of 5 stars">
+          <svg class="result-star" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.5 2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.51l-5.88 3.1 1.12-6.55L2.48 9.42l6.58-.96z"/></svg>
+          <svg class="result-star" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.5 2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.51l-5.88 3.1 1.12-6.55L2.48 9.42l6.58-.96z"/></svg>
+          <svg class="result-star" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.5 2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.51l-5.88 3.1 1.12-6.55L2.48 9.42l6.58-.96z"/></svg>
+          <svg class="result-star" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.5 2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.51l-5.88 3.1 1.12-6.55L2.48 9.42l6.58-.96z"/></svg>
+          <svg class="result-star" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.5 2.94 5.96 6.58.96-4.76 4.64 1.12 6.55L12 17.51l-5.88 3.1 1.12-6.55L2.48 9.42l6.58-.96z"/></svg>
+        </div>
+        <p id="result-rating">No captured energy</p>
+      </div>
+      <dl class="results-secondary">
+        <div><dt>Peak power</dt><dd><span id="result-peak-power">0.00</span> <span>MW</span></dd></div>
+        <div><dt>Session high score</dt><dd><span id="result-high-score">0.000</span> <span>MWh</span></dd></div>
+      </dl>
+      <p class="results-session-note">High scores last until you reload or close the app.</p>
+      <div class="results-actions">
+        <button id="return-to-field" type="button">Back to field</button>
+        <button id="run-again" type="button">Run again <span aria-hidden="true">↗</span></button>
+      </div>
+    </dialog>
     <footer id="creator-credit">Created by <a href="mailto:bornagaingenius2@gmail.com">ResurrectedGenius</a></footer>
     <div id="loading" role="status">Loading scene…</div>
     <script type="module" src="./src/main.js"></script>

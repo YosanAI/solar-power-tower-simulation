@@ -535,3 +535,38 @@ test('real compile and runtime errors carry editor lines and discard queued comm
   assert.equal(h.starts, 1);
   assert.deepEqual(h.commands, [[]]);
 });
+
+test('completed results arrive once, after final commands and ledger shutdown, while Stop and failure produce none', (t) => {
+  const completed = [];
+  const h = createHarness(t, { onComplete: result => completed.push(result) });
+  let active = true;
+  h.api.endYieldRun = () => { active = false; };
+  h.api.getYieldState = () => ({ energyWh: 160e6, peakPowerWatts: 18e6, active, finalAzimuth: h.rigs[0].azimuth });
+  h.runner.run(DEFAULT_CODE);
+  h.ready();
+  h.runner.tick(0);
+  h.respond();
+  h.runner.tick(12);
+  const stale = h.workers[0].onmessage;
+  h.respond([{ id: 'H-0', method: 'setAzimuth', value: 0.7 }]);
+  assert.equal(completed.length, 1);
+  assert.deepEqual(completed[0], { energyWh: 160e6, peakPowerWatts: 18e6, active: false, finalAzimuth: 0.7 });
+  assert.equal(h.runner.isRunning(), false);
+  stale({ data: { type: 'frame', id: 2, commands: [] } });
+  h.runner.stop();
+  assert.equal(completed.length, 1);
+
+  h.runner.run(DEFAULT_CODE);
+  h.ready();
+  h.runner.tick(0);
+  h.respond();
+  h.runner.tick(3);
+  h.runner.stop();
+  assert.equal(completed.length, 1);
+  h.runner.run(DEFAULT_CODE);
+  h.ready();
+  h.runner.tick(0);
+  h.respond([{ id: 'unknown', method: 'setAzimuth', value: 0 }]);
+  assert.equal(completed.length, 1);
+  assert.ok(h.errors.length > 0);
+});

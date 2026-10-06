@@ -50,7 +50,7 @@ export function mirrorCompletionSource(context) {
   return { from: context.pos - match[2].length, options, validFor: /^[\w$]*$/ };
 }
 
-export function createCodeEditor({ api, onStart, onStop }) {
+export function createCodeEditor({ api, onStart, onStop, onRun, onComplete }) {
   const panel = document.getElementById('script-panel');
   const toggleButton = document.getElementById('toggle-script');
   const status = document.getElementById('script-status');
@@ -64,6 +64,7 @@ export function createCodeEditor({ api, onStart, onStop }) {
   const runner = createSimulationRunner(api, {
     onStart,
     onStop,
+    onComplete,
     onStateChange(running, phase) {
       toggleButton.textContent = running ? 'Stop' : 'Run';
       toggleButton.title = running ? 'Stop simulation (Ctrl / Cmd + Enter or Escape in editor)' : 'Run code (Ctrl / Cmd + Enter)';
@@ -125,6 +126,7 @@ export function createCodeEditor({ api, onStart, onStop }) {
   editor.dom.addEventListener('keydown', handleEditorKey, true);
 
   function run() {
+    onRun?.();
     return runner.run(editor.state.doc.toString());
   }
 

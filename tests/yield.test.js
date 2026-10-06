@@ -5,7 +5,8 @@ import { CONFIG } from '../src/scene/config.js';
 import { clearSkyDni, beamCapture, sunUnitDirection, evaluateMirrorYield } from '../src/physics/yieldModel.js';
 import { YieldTracker } from '../src/app/yieldTracker.js';
 import { HeliostatRig } from '../src/scene/heliostats.js';
-import { getSolarDay } from '../src/utils/solarTime.js';
+import { getSolarDay, getSunPosition } from '../src/utils/solarTime.js';
+import { radians } from '../src/utils/math.js';
 
 const sun = { azimuth: 0, elevation: Math.PI / 4 };
 const target = { x: 0, y: 139.3, z: 0 };
@@ -156,4 +157,75 @@ test('automatic-day quadrature matches fine sampling even when a callback skips 
   assert.ok(fine > 1000 && fine < 15000, 'a stationary noon pose captures a limited part of the day');
   assert.ok(Math.abs(coarse - fine) / fine < 0.002, `integration error ${(coarse - fine) / fine}`);
   assert.equal(trackers[0].getState().powerWatts, trackers[1].getState().powerWatts, 'integration does not move the visible sun or mirror');
+});
+
+test('ideal tracking earns full efficiency and preserves the day peak after sunset and stop', () => {
+  const tracker = new YieldTracker([rigFromGeometry(geometry())], target, CONFIG, { sunrise: 360, sunset: 1080 }, 12);
+  tracker.updateSun(sun);
+  tracker.beginRun();
+  tracker.updateSun(sun);
+  const power = tracker.getState().powerWatts;
+  tracker.advanceTo(12);
+  const result = tracker.getState();
+  assert.ok(result.idealEnergyWh > 0);
+  close(result.efficiencyPercent, 100, 1e-6);
+  close(result.peakPowerWatts, power);
+  close(result.peakPowerMW, power / 1e6);
+  tracker.endRun();
+  tracker.updateSun({ azimuth: 0, elevation: -0.1 });
+  assert.equal(tracker.getState().powerWatts, 0);
+  close(tracker.getState().peakPowerWatts, power);
+  close(tracker.getState().idealEnergyWh, result.idealEnergyWh);
+  tracker.beginRun();
+  assert.equal(tracker.getState().peakPowerWatts, 0);
+  assert.equal(tracker.getState().idealEnergyWh, 0);
+});
+
+test('efficiency compares the whole day with an independent ideal field, rather than the final capture fraction', () => {
+  const badGeometry = geometry(30);
+  const good = rigFromGeometry(geometry());
+  const bad = rigFromGeometry(badGeometry);
+  const tracker = new YieldTracker([good, bad], target, CONFIG, { sunrise: 360, sunset: 1080 }, 12);
+  tracker.updateSun(sun);
+  tracker.beginRun();
+  tracker.updateSun(sun);
+  const referencePower = tracker.idealPowerWatts;
+  tracker.advanceTo(6);
+  assert.ok(Math.abs(tracker.getState().efficiencyPercent - 50) < 0.05);
+  Object.assign(badGeometry, geometry());
+  bad.elevationPivot.matrixWorld.makeBasis(new THREE.Vector3(...badGeometry.right), new THREE.Vector3(...badGeometry.up), new THREE.Vector3(...badGeometry.normal));
+  tracker.refresh(bad);
+  assert.equal(tracker.idealPowerWatts, referencePower, 'correcting a mirror does not change the denominator');
+  tracker.advanceTo(12);
+  const state = tracker.getState();
+  assert.ok(Math.abs(state.efficiencyPercent - 75) < 0.05);
+  assert.ok(state.captureFraction > 0.99, 'a perfect final pose does not erase the missed morning');
+  close(state.peakPowerWatts, state.powerWatts);
+});
+
+test('cached ideal-day energy matches minute-by-minute optics and is reused on subsequent runs', () => {
+  const day = getSolarDay(CONFIG.solarDay);
+  const tracker = new YieldTracker([rigFromGeometry(geometry())], target, CONFIG, day, 12);
+  tracker.updateSun(sun);
+  let referenceWh = 0;
+  const steps = Math.ceil(day.sunset - day.sunrise);
+  const hoursPerStep = (day.sunset - day.sunrise) / 60 / steps;
+  for (let step = 0; step < steps; step += 1) {
+    const angles = getSunPosition(day.sunrise + (step + 0.5) / steps * (day.sunset - day.sunrise), day);
+    const data = { azimuth: radians(angles.azimuth), elevation: radians(angles.elevation) };
+    referenceWh += tracker.idealPower(data, clearSkyDni(data.elevation, CONFIG.yield, CONFIG.solarDay.date), sunUnitDirection(data)) * hoursPerStep;
+  }
+  const evaluate = tracker.idealPower.bind(tracker);
+  let evaluations = 0;
+  tracker.idealPower = (...args) => { evaluations += 1; return evaluate(...args); };
+  tracker.beginRun();
+  tracker.advanceTo(12);
+  const first = tracker.getState().idealEnergyWh;
+  assert.ok(Math.abs(first - referenceWh) / referenceWh < 0.002, 'cached reference differs by less than 0.2%');
+  assert.ok(evaluations < steps / 3, 'benchmark traces are not repeated for every integration sample');
+  tracker.beginRun();
+  const afterBegin = evaluations;
+  tracker.advanceTo(12);
+  assert.equal(evaluations, afterBegin, 'the next day reuses the entire ideal power curve');
+  close(tracker.getState().idealEnergyWh, first);
 });

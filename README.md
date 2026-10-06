@@ -49,7 +49,15 @@ In the configuration panel, **Debug → Show rays** is off by default. Enable it
 
 The black receiver absorber glows as instantaneous absorbed power rises, changing from a faint warm sheen to a bright warm-white surface with a soft corona. The halo follows the receiver's projected shape as the camera moves, shimmers subtly during simulation or camera movement, and extinguishes at zero input. A stationary scene stays idle. Brightness is a visual indication of received power, with a 20 MW reference in `CONFIG.receiverGlow.fullPowerWatts`; it does not change the yield model or calculate receiver temperature. The bright surface appears in mirror reflections; the camera-facing halo stays out of reflection probes and shadows.
 
-Console APIs include `solarScene.getYieldState()`, `getShowRays()` and `setShowRays(true)`. `getYieldState()` provides raw `energyWh`/`powerWatts`, display `energyMWh`/`powerMW`, capture fraction, contributing mirrors and DNI. Optical calculations use the reflecting face's world position (`getMirrorCenter()`), including its offset from the controller's rotation-pivot position.
+Console APIs include `solarScene.getYieldState()`, `getShowRays()` and `setShowRays(true)`. `getYieldState()` provides raw `energyWh`/`powerWatts`, display `energyMWh`/`powerMW`, `peakPowerMW`, `idealEnergyMWh`, `efficiencyPercent`, capture fraction, contributing mirrors and DNI. Optical calculations use the reflecting face's world position (`getMirrorCenter()`), including its offset from the controller's rotation-pivot position.
+
+## Completed-day results
+
+A successful sunset callback opens a results screen highlighting the **MWh energy score** and **tracking efficiency**, with the day's **peak power in MW**, a five-star rating and the **session high score**. Close it with ×, **Back to field**, Escape or the backdrop; **Run again** starts the current controller code. Early Stop, compilation failures and runtime errors do not show results or update the record.
+
+Tracking efficiency compares accumulated receiver heat with the same field aimed ideally at the receiver under the same sun conditions. The benchmark uses the existing optical model, including mirror dimensions and losses; a cached five-minute reference curve keeps its calculation out of every frame. Actual energy and peak power retain the existing one-minute integration resolution. Manual sun intervals compare with ideal tracking under that manual sun. Stars use the displayed efficiency: zero energy gets no stars, positive energy gets one, and 25%, 50%, 75% and 90% earn two through five stars.
+
+Only a strictly higher completed-day MWh score earns **New high score**; lower scores and ties retain the record. Records live in memory for the current app instance and reset on reload or closing the app. Results are a snapshot, so later sun and mirror edits do not alter a completed day's statistics.
 
 ## Embedded mirror controller
 
